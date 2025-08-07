@@ -1,0 +1,63 @@
+{
+  "mcpServers": {
+    "server-sequential-thinking": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/server-sequential-thinking",
+        "--key",
+        "399a028b-e237-48aa-98e7-ccdde72a2bfa",
+        "--profile",
+        "hidden-mackerel-ExRO36"
+      ],
+      "disabled": false
+    },
+    "context7-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@upstash/context7-mcp",
+        "--key",
+        "399a028b-e237-48aa-98e7-ccdde72a2bfa"
+      ]
+    },
+    "github": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/github",
+        "--key",
+        "399a028b-e237-48aa-98e7-ccdde72a2bfa",
+        "--profile",
+        "hidden-mackerel-ExRO36"
+      ]
+    },
+    "supabase-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@supabase-community/supabase-mcp",
+        "--key",
+        "399a028b-e237-48aa-98e7-ccdde72a2bfa",
+        "--profile",
+        "hidden-mackerel-ExRO36"
+      ]
+    }
+  }
+}
