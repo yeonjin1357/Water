@@ -10,7 +10,14 @@
       "Bash(git init:*)",
       "mcp__github__search_repositories",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter:*)",
+      "Bash(mkdir:*)",
+      "Bash(gradlew:*)",
+      "Bash(adb:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
