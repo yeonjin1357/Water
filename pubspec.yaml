@@ -48,6 +48,9 @@ dependencies:
   
   # 알림 기능
   flutter_local_notifications: ^17.0.0
+  
+  # 차트 라이브러리
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:

@@ -9,9 +9,9 @@ class AppColors {
   
   // 다크 모드 색상
   static const Color darkPrimary = Color(0xFF2196F3);
-  static const Color darkSecondary = Color(0xFF1976D2);
-  static const Color darkBackground = Color(0xFF0D47A1);
-  static const Color darkSurface = Color(0xFF1565C0);
+  static const Color darkSecondary = Color(0xFF64B5F6);
+  static const Color darkBackground = Color(0xFF121212);
+  static const Color darkSurface = Color(0xFF1E1E1E);
   
   // 공통 색상
   static const Color waterBlue = Color(0xFF64B5F6);

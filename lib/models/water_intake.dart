@@ -3,12 +3,14 @@ class WaterIntake {
   final int amount;
   final DateTime timestamp;
   final String? note;
+  final String drinkType;
 
   WaterIntake({
     required this.id,
     required this.amount,
     required this.timestamp,
     this.note,
+    this.drinkType = 'water',
   });
 
   Map<String, dynamic> toMap() {
@@ -17,6 +19,7 @@ class WaterIntake {
       'amount': amount,
       'timestamp': timestamp.toIso8601String(),
       'note': note,
+      'drinkType': drinkType,
     };
   }
 
@@ -26,6 +29,7 @@ class WaterIntake {
       amount: map['amount'],
       timestamp: DateTime.parse(map['timestamp']),
       note: map['note'],
+      drinkType: map['drinkType'] ?? 'water',
     );
   }
 }

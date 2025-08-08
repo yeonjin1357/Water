@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/water_intake_provider.dart';
-import '../widgets/water_glass_widget.dart';
+import '../widgets/modern_water_glass.dart';
 import '../widgets/drink_settings_dialog.dart';
 import '../widgets/history_bottom_sheet.dart';
+import '../widgets/edit_intake_dialog.dart';
+import '../models/water_intake.dart';
+import '../localization/app_localizations.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,9 +22,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: Consumer<WaterIntakeProvider>(
-        builder: (context, provider, child) {
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Consumer<WaterIntakeProvider>(
+          builder: (context, provider, child) {
           final progress = provider.progress.clamp(0.0, 1.0);
           
           return Column(
@@ -29,15 +33,15 @@ class _MainScreenState extends State<MainScreen> {
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
                       children: [
-                        WaterGlassWidget(
+                        ModernWaterGlass(
                           waterLevel: progress,
                           currentAmount: provider.todayTotal,
                           goalAmount: provider.userSettings.dailyGoal,
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -45,13 +49,17 @@ class _MainScreenState extends State<MainScreen> {
                               context,
                               amount: currentAmount,
                               drinkType: currentDrinkType,
-                              onTap: () => provider.addWaterIntake(currentAmount, note: currentDrinkType),
+                              onTap: () async => await provider.addWaterIntake(
+                                currentAmount,
+                                note: currentDrinkType,
+                                drinkType: currentDrinkType.toLowerCase(),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             _buildSettingsIcon(context),
                           ],
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -62,6 +70,7 @@ class _MainScreenState extends State<MainScreen> {
           );
         },
       ),
+      ),
     );
   }
 
@@ -69,32 +78,56 @@ class _MainScreenState extends State<MainScreen> {
     BuildContext context, {
     required int amount,
     required String drinkType,
-    required VoidCallback onTap,
+    required Future<void> Function() onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 160,
-        height: 50,
+        width: 180,
+        height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF87CEEB),
-          borderRadius: BorderRadius.circular(25),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF64B5F6),
+              Color(0xFF42A5F5),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF87CEEB).withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
+              color: const Color(0xFF42A5F5).withValues(alpha: 0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Center(
-          child: Text(
-            'Drink ($amount mL)',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.water_drop,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                AppLocalizations.get('drinkAmount', amount.toString()),
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -140,16 +173,28 @@ class _MainScreenState extends State<MainScreen> {
         );
       },
       child: Container(
-        width: 45,
-        height: 45,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).colorScheme.surface,
+              Theme.of(context).colorScheme.surfaceContainerHighest,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.02),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
@@ -167,14 +212,14 @@ class _MainScreenState extends State<MainScreen> {
     return Container(
       height: 250,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -188,8 +233,8 @@ class _MainScreenState extends State<MainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'History',
+                Text(
+                  AppLocalizations.get('history'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -204,8 +249,8 @@ class _MainScreenState extends State<MainScreen> {
                       builder: (context) => const HistoryBottomSheet(),
                     );
                   },
-                  child: const Text(
-                    'View All →',
+                  child: Text(
+                    AppLocalizations.get('viewAll'),
                     style: TextStyle(
                       color: Color(0xFF87CEEB),
                       fontSize: 14,
@@ -219,9 +264,9 @@ class _MainScreenState extends State<MainScreen> {
             child: provider.todayIntakes.isEmpty
               ? Center(
                   child: Text(
-                    'No drinks yet today',
+                    AppLocalizations.get('noDrinksToday'),
                     style: TextStyle(
-                      color: Colors.grey[500],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       fontSize: 14,
                     ),
                   ),
@@ -274,7 +319,7 @@ class _MainScreenState extends State<MainScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -309,7 +354,7 @@ class _MainScreenState extends State<MainScreen> {
                   time,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -322,37 +367,80 @@ class _MainScreenState extends State<MainScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
+          const SizedBox(width: 4),
+          PopupMenuButton<String>(
             icon: Icon(
-              Icons.delete_outline,
-              color: Colors.red[400],
+              Icons.more_vert,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               size: 20,
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Entry'),
-                  content: const Text('Are you sure you want to delete this entry?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        provider.removeIntake(intake.id);
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('Delete'),
-                    ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            offset: const Offset(0, 30),
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('edit')),
                   ],
                 ),
-              );
+              ),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('delete'), style: const TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'edit') {
+                showDialog(
+                  context: context,
+                  builder: (context) => EditIntakeDialog(
+                    intake: intake,
+                    onConfirm: (amount, drinkType) async {
+                      final updatedIntake = WaterIntake(
+                        id: intake.id,
+                        amount: amount,
+                        timestamp: intake.timestamp,
+                        note: drinkType,
+                      );
+                      await provider.updateIntake(updatedIntake);
+                    },
+                  ),
+                );
+              } else if (value == 'delete') {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(AppLocalizations.get('deleteEntry')),
+                    content: Text(AppLocalizations.get('deleteConfirm')),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(AppLocalizations.get('cancel')),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await provider.removeIntake(intake.id);
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: Text(AppLocalizations.get('delete')),
+                      ),
+                    ],
+                  ),
+                );
+              }
             },
           ),
         ],

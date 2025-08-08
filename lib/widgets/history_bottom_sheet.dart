@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/water_intake_provider.dart';
+import '../models/water_intake.dart';
+import 'edit_intake_dialog.dart';
+import '../localization/app_localizations.dart';
 
-class HistoryBottomSheet extends StatelessWidget {
+class HistoryBottomSheet extends StatefulWidget {
   const HistoryBottomSheet({super.key});
+
+  @override
+  State<HistoryBottomSheet> createState() => _HistoryBottomSheetState();
+}
+
+class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
+  late Future<List<WaterIntake>> _allIntakesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _allIntakesFuture = context.read<WaterIntakeProvider>().getAllIntakes();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,9 +29,9 @@ class HistoryBottomSheet extends StatelessWidget {
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
             ),
@@ -28,7 +44,7 @@ class HistoryBottomSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -38,8 +54,8 @@ class HistoryBottomSheet extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'History',
+                    Text(
+                      AppLocalizations.get('history'),
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -54,9 +70,23 @@ class HistoryBottomSheet extends StatelessWidget {
               ),
               // Content
               Expanded(
-                child: Consumer<WaterIntakeProvider>(
-                  builder: (context, provider, child) {
-                    final groupedIntakes = _groupIntakesByDate(provider.todayIntakes);
+                child: FutureBuilder<List<WaterIntake>>(
+                  future: _allIntakesFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text('Error: ${snapshot.error}'),
+                      );
+                    }
+
+                    final allIntakes = snapshot.data ?? [];
+                    final groupedIntakes = _groupIntakesByDate(allIntakes);
                     
                     if (groupedIntakes.isEmpty) {
                       return Center(
@@ -66,14 +96,14 @@ class HistoryBottomSheet extends StatelessWidget {
                             Icon(
                               Icons.water_drop_outlined,
                               size: 80,
-                              color: Colors.grey[300],
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No drinks recorded yet',
+                              AppLocalizations.get('noRecordsYet'),
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey[600],
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                               ),
                             ),
                           ],
@@ -89,7 +119,7 @@ class HistoryBottomSheet extends StatelessWidget {
                         final date = groupedIntakes.keys.elementAt(index);
                         final intakes = groupedIntakes[date]!;
                         final totalAmount = intakes.fold<int>(
-                          0, (sum, intake) => sum + (intake.amount as int)
+                          0, (sum, intake) => sum + intake.amount
                         );
                         
                         return Column(
@@ -114,15 +144,15 @@ class HistoryBottomSheet extends StatelessWidget {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF87CEEB).withOpacity(0.1),
+                                      color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      '$totalAmount mL',
+                                      AppLocalizations.get('totalAmount', totalAmount.toString()),
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF87CEEB),
+                                        color: Color(0xFF42A5F5),
                                       ),
                                     ),
                                   ),
@@ -131,8 +161,8 @@ class HistoryBottomSheet extends StatelessWidget {
                             ),
                             // Intake items
                             ...intakes.map((intake) => _buildHistoryItem(
-                              context, intake, provider
-                            )).toList(),
+                              context, intake, context.read<WaterIntakeProvider>()
+                            )),
                             const SizedBox(height: 16),
                           ],
                         );
@@ -148,8 +178,8 @@ class HistoryBottomSheet extends StatelessWidget {
     );
   }
 
-  Map<DateTime, List<dynamic>> _groupIntakesByDate(List<dynamic> intakes) {
-    final Map<DateTime, List<dynamic>> grouped = {};
+  Map<DateTime, List<WaterIntake>> _groupIntakesByDate(List<WaterIntake> intakes) {
+    final Map<DateTime, List<WaterIntake>> grouped = {};
     
     for (final intake in intakes) {
       final date = DateTime(
@@ -169,7 +199,7 @@ class HistoryBottomSheet extends StatelessWidget {
     final sortedKeys = grouped.keys.toList()
       ..sort((a, b) => b.compareTo(a));
     
-    final sortedMap = <DateTime, List<dynamic>>{};
+    final sortedMap = <DateTime, List<WaterIntake>>{};
     for (final key in sortedKeys) {
       sortedMap[key] = grouped[key]!;
     }
@@ -183,15 +213,15 @@ class HistoryBottomSheet extends StatelessWidget {
     final yesterday = today.subtract(const Duration(days: 1));
     
     if (date == today) {
-      return 'Today';
+      return AppLocalizations.get('dateToday');
     } else if (date == yesterday) {
-      return 'Yesterday';
+      return AppLocalizations.get('dateYesterday');
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
   }
 
-  Widget _buildHistoryItem(BuildContext context, dynamic intake, dynamic provider) {
+  Widget _buildHistoryItem(BuildContext context, WaterIntake intake, WaterIntakeProvider provider) {
     final time = '${intake.timestamp.hour.toString().padLeft(2, '0')}:${intake.timestamp.minute.toString().padLeft(2, '0')}';
     final drinkType = intake.note ?? 'Water';
     
@@ -226,7 +256,7 @@ class HistoryBottomSheet extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -273,37 +303,88 @@ class HistoryBottomSheet extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
+          const SizedBox(width: 4),
+          PopupMenuButton<String>(
             icon: Icon(
-              Icons.delete_outline,
-              color: Colors.red[400],
+              Icons.more_vert,
+              color: Colors.grey[600],
               size: 18,
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Entry'),
-                  content: const Text('Are you sure you want to delete this entry?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        provider.removeIntake(intake.id);
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('Delete'),
-                    ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            offset: const Offset(0, 30),
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, size: 16),
+                    SizedBox(width: 8),
+                    Text('Edit', style: TextStyle(fontSize: 14)),
                   ],
                 ),
-              );
+              ),
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: Colors.red, fontSize: 14)),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'edit') {
+                showDialog(
+                  context: context,
+                  builder: (context) => EditIntakeDialog(
+                    intake: intake,
+                    onConfirm: (amount, drinkType) async {
+                      final updatedIntake = WaterIntake(
+                        id: intake.id,
+                        amount: amount,
+                        timestamp: intake.timestamp,
+                        note: drinkType,
+                      );
+                      await provider.updateIntake(updatedIntake);
+                      setState(() {
+                        _allIntakesFuture = provider.getAllIntakes();
+                      });
+                    },
+                  ),
+                );
+              } else if (value == 'delete') {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Entry'),
+                    content: const Text('Are you sure you want to delete this entry?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await provider.removeIntake(intake.id);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            setState(() {
+                              _allIntakesFuture = provider.getAllIntakes();
+                            });
+                          }
+                        },
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              }
             },
           ),
         ],

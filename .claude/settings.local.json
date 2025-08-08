@@ -17,7 +17,8 @@
       "Bash(flutter:*)",
       "Bash(mkdir:*)",
       "Bash(gradlew:*)",
-      "Bash(adb:*)"
+      "Bash(adb:*)",
+      "Bash(touch:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

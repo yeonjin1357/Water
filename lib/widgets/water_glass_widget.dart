@@ -189,8 +189,8 @@ class WaterGlassPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF9CFFFA).withOpacity(0.4),
-          const Color(0xFF7FEFBD).withOpacity(0.6),
+          const Color(0xFF64B5F6).withValues(alpha: 0.5),  // Light blue
+          const Color(0xFF42A5F5).withValues(alpha: 0.7),  // Deeper blue
         ],
       );
       

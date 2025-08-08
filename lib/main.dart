@@ -5,11 +5,13 @@ import 'screens/settings_screen.dart';
 import 'screens/stats_screen.dart';
 import 'constants/colors.dart';
 import 'providers/water_intake_provider.dart';
+import 'localization/app_localizations.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     ChangeNotifierProvider(
-      create: (context) => WaterIntakeProvider()..loadTodayData(),
+      create: (context) => WaterIntakeProvider(),
       child: const WaterReminderApp(),
     ),
   );
@@ -20,26 +22,33 @@ class WaterReminderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '물 마시기 리마인더',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: AppColors.background,
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.darkPrimary,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: AppColors.darkBackground,
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
+    return Consumer<WaterIntakeProvider>(
+      builder: (context, provider, child) {
+        return MaterialApp(
+          title: AppLocalizations.get('appTitle'),
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              brightness: Brightness.light,
+            ),
+            scaffoldBackgroundColor: AppColors.background,
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.darkPrimary,
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: AppColors.darkBackground,
+            useMaterial3: true,
+          ),
+          themeMode: provider.userSettings.isDarkMode 
+              ? ThemeMode.dark 
+              : ThemeMode.light,
+          home: const HomePage(),
+        );
+      },
     );
   }
 }
@@ -53,6 +62,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  late Future<void> _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFuture = context.read<WaterIntakeProvider>().initialize();
+  }
 
   final List<Widget> _screens = [
     const MainScreen(),
@@ -68,26 +84,43 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.water_drop),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: '통계',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '설정',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+    return FutureBuilder<void>(
+      future: _initFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        return Consumer<WaterIntakeProvider>(
+          builder: (context, provider, child) {
+            return Scaffold(
+              body: _screens[_selectedIndex],
+              bottomNavigationBar: BottomNavigationBar(
+                items: <BottomNavigationBarItem>[
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.water_drop),
+                    label: AppLocalizations.get('home'),
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.bar_chart),
+                    label: AppLocalizations.get('stats'),
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.settings),
+                    label: AppLocalizations.get('settings'),
+                  ),
+                ],
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

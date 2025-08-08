@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 
 class DrinkSettingsDialog extends StatefulWidget {
   final int currentAmount;
@@ -46,8 +47,8 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Drink Settings',
+                Text(
+                  AppLocalizations.get('drinkSettings'),
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
@@ -61,8 +62,8 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
             const SizedBox(height: 20),
 
             // Drink Type Selection
-            const Text(
-              'Select Drink',
+            Text(
+              AppLocalizations.get('selectDrink'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
@@ -87,7 +88,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFF87CEEB).withOpacity(0.2)
-                            : Colors.grey[100],
+                            : Theme.of(context).colorScheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
@@ -113,7 +114,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
                               fontSize: 12,
                               color: isSelected
                                   ? const Color(0xFF87CEEB)
-                                  : Colors.grey[700],
+                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               fontWeight: isSelected
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -129,8 +130,8 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
             const SizedBox(height: 24),
 
             // Amount Selection
-            const Text(
-              'Select Amount',
+            Text(
+              AppLocalizations.get('selectAmount'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
@@ -153,19 +154,19 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF87CEEB)
-                          : Colors.grey[100],
+                          ? const Color(0xFF42A5F5)
+                          : Theme.of(context).colorScheme.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF87CEEB)
-                            : Colors.grey[300]!,
+                            ? const Color(0xFF42A5F5)
+                            : Theme.of(context).dividerColor,
                       ),
                     ),
                     child: Text(
                       '$amount ml',
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey[700],
+                        color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -180,7 +181,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
             // Custom Amount Input
             TextField(
               decoration: InputDecoration(
-                labelText: 'Custom Amount (ml)',
+                labelText: AppLocalizations.get('customAmount'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -207,18 +208,18 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF87CEEB),
+                  backgroundColor: const Color(0xFF42A5F5),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
                 ),
                 child: Text(
-                  'Confirm ($selectedAmount ml)',
-                  style: const TextStyle(
+                  '${AppLocalizations.get('confirm')} ($selectedAmount ml)',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
               ),
