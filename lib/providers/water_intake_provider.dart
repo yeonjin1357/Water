@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/water_intake.dart';
 import '../models/user_settings.dart';
 import '../services/database_helper.dart';
 import '../services/preferences_service.dart';
+import '../services/notification_service.dart';
 import '../localization/app_localizations.dart';
 
 class WaterIntakeProvider extends ChangeNotifier {
@@ -11,6 +13,9 @@ class WaterIntakeProvider extends ChangeNotifier {
   int _todayTotal = 0;
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final PreferencesService _prefsService = PreferencesService();
+  final NotificationService _notificationService = NotificationService();
+  Timer? _midnightTimer;
+  DateTime? _lastLoadedDate;
 
   List<WaterIntake> get todayIntakes => _todayIntakes;
   UserSettings get userSettings => _userSettings;
@@ -29,6 +34,15 @@ class WaterIntakeProvider extends ChangeNotifier {
     await _dbHelper.insertIntake(intake);
     _todayIntakes.add(intake);
     _todayTotal += amount;
+    
+    // Update persistent notification if enabled
+    if (_userSettings.persistentNotificationEnabled) {
+      await _notificationService.showPersistentNotification(
+        currentAmount: _todayTotal,
+        dailyGoal: _userSettings.dailyGoal,
+      );
+    }
+    
     notifyListeners();
   }
 
@@ -37,6 +51,15 @@ class WaterIntakeProvider extends ChangeNotifier {
     await _dbHelper.deleteIntake(id);
     _todayTotal -= intake.amount;
     _todayIntakes.removeWhere((i) => i.id == id);
+    
+    // Update persistent notification if enabled
+    if (_userSettings.persistentNotificationEnabled) {
+      await _notificationService.showPersistentNotification(
+        currentAmount: _todayTotal,
+        dailyGoal: _userSettings.dailyGoal,
+      );
+    }
+    
     notifyListeners();
   }
 
@@ -66,16 +89,46 @@ class WaterIntakeProvider extends ChangeNotifier {
   }
 
   Future<void> updateSettings(UserSettings newSettings) async {
+    final oldPersistentEnabled = _userSettings.persistentNotificationEnabled;
     _userSettings = newSettings;
     await _prefsService.saveSettings(newSettings);
     AppLocalizations.setLanguage(newSettings.language);
+    
+    // Handle persistent notification changes
+    if (newSettings.persistentNotificationEnabled && !oldPersistentEnabled) {
+      // Show persistent notification if just enabled
+      await _notificationService.showPersistentNotification(
+        currentAmount: _todayTotal,
+        dailyGoal: newSettings.dailyGoal,
+      );
+    } else if (!newSettings.persistentNotificationEnabled && oldPersistentEnabled) {
+      // Hide persistent notification if just disabled
+      await _notificationService.hidePersistentNotification();
+    } else if (newSettings.persistentNotificationEnabled) {
+      // Update if goal changed while enabled
+      await _notificationService.showPersistentNotification(
+        currentAmount: _todayTotal,
+        dailyGoal: newSettings.dailyGoal,
+      );
+    }
+    
     notifyListeners();
   }
 
   Future<void> loadTodayData() async {
     final today = DateTime.now();
+    _lastLoadedDate = today;
     _todayIntakes = await _dbHelper.getIntakesByDate(today);
     _todayTotal = _todayIntakes.fold(0, (sum, intake) => sum + intake.amount);
+    
+    // Show persistent notification if enabled
+    if (_userSettings.persistentNotificationEnabled) {
+      await _notificationService.showPersistentNotification(
+        currentAmount: _todayTotal,
+        dailyGoal: _userSettings.dailyGoal,
+      );
+    }
+    
     notifyListeners();
   }
 
@@ -89,6 +142,38 @@ class WaterIntakeProvider extends ChangeNotifier {
     _userSettings = await _prefsService.loadSettings();
     AppLocalizations.setLanguage(_userSettings.language);
     await loadTodayData();
+    _setupMidnightTimer();
+  }
+  
+  void _setupMidnightTimer() {
+    _midnightTimer?.cancel();
+    
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final timeUntilMidnight = tomorrow.difference(now);
+    
+    _midnightTimer = Timer(timeUntilMidnight, () async {
+      await loadTodayData();
+      _setupMidnightTimer();
+    });
+  }
+  
+  Future<void> checkAndReloadIfNeeded() async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    
+    if (_lastLoadedDate != null) {
+      final lastDate = DateTime(_lastLoadedDate!.year, _lastLoadedDate!.month, _lastLoadedDate!.day);
+      if (todayDate != lastDate) {
+        await loadTodayData();
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    super.dispose();
   }
 
   Future<List<WaterIntake>> getAllIntakes() async {

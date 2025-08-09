@@ -8,6 +8,8 @@ class UserSettings {
   final int defaultAmount;
   final bool isDarkMode;
   final String language;
+  final bool notificationsEnabled;
+  final bool persistentNotificationEnabled;
 
   UserSettings({
     this.dailyGoal = 2000,
@@ -17,6 +19,8 @@ class UserSettings {
     this.defaultAmount = 250,
     this.isDarkMode = false,
     this.language = 'ko',
+    this.notificationsEnabled = false,
+    this.persistentNotificationEnabled = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +32,8 @@ class UserSettings {
       'defaultAmount': defaultAmount,
       'isDarkMode': isDarkMode,
       'language': language,
+      'notificationsEnabled': notificationsEnabled,
+      'persistentNotificationEnabled': persistentNotificationEnabled,
     };
   }
 
@@ -49,6 +55,8 @@ class UserSettings {
       defaultAmount: map['defaultAmount'] ?? 250,
       isDarkMode: map['isDarkMode'] ?? false,
       language: map['language'] ?? 'ko',
+      notificationsEnabled: map['notificationsEnabled'] ?? false,
+      persistentNotificationEnabled: map['persistentNotificationEnabled'] ?? false,
     );
   }
 }

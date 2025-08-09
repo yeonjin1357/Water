@@ -6,9 +6,15 @@ import 'screens/stats_screen.dart';
 import 'constants/colors.dart';
 import 'providers/water_intake_provider.dart';
 import 'localization/app_localizations.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  
   runApp(
     ChangeNotifierProvider(
       create: (context) => WaterIntakeProvider(),
@@ -60,14 +66,28 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   late Future<void> _initFuture;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initFuture = context.read<WaterIntakeProvider>().initialize();
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<WaterIntakeProvider>().checkAndReloadIfNeeded();
+    }
   }
 
   final List<Widget> _screens = [

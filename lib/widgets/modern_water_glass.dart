@@ -109,16 +109,6 @@ class _ModernWaterGlassState extends State<ModernWaterGlass>
         Container(
           width: 240,
           height: 320,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
-            ],
-          ),
           child: AnimatedBuilder(
             animation: Listenable.merge([
               _waveController,

@@ -23,6 +23,8 @@ class AppLocalizations {
       'viewAll': '전체 보기 →',
       'noDrinksToday': '오늘 마신 물이 없습니다',
       'ofDailyGoal': '일일 목표의',
+      'entries': '개 기록',
+      'startHydrating': '지금 시작하세요!',
       
       // Drink Types
       'water': '물',
@@ -98,6 +100,8 @@ class AppLocalizations {
       'viewAll': 'View All →',
       'noDrinksToday': 'No drinks yet today',
       'ofDailyGoal': 'of daily goal',
+      'entries': 'entries',
+      'startHydrating': 'Start hydrating!',
       
       // Drink Types
       'water': 'Water',

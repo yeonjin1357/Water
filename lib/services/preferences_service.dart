@@ -10,6 +10,8 @@ class PreferencesService {
   static const String _defaultAmountKey = 'default_amount';
   static const String _isDarkModeKey = 'is_dark_mode';
   static const String _languageKey = 'language';
+  static const String _notificationsEnabledKey = 'notifications_enabled';
+  static const String _persistentNotificationKey = 'persistent_notification';
 
   Future<UserSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,6 +36,8 @@ class PreferencesService {
       defaultAmount: prefs.getInt(_defaultAmountKey) ?? 250,
       isDarkMode: prefs.getBool(_isDarkModeKey) ?? false,
       language: prefs.getString(_languageKey) ?? 'ko',
+      notificationsEnabled: prefs.getBool(_notificationsEnabledKey) ?? false,
+      persistentNotificationEnabled: prefs.getBool(_persistentNotificationKey) ?? false,
     );
   }
 
@@ -53,5 +57,7 @@ class PreferencesService {
     await prefs.setInt(_defaultAmountKey, settings.defaultAmount);
     await prefs.setBool(_isDarkModeKey, settings.isDarkMode);
     await prefs.setString(_languageKey, settings.language);
+    await prefs.setBool(_notificationsEnabledKey, settings.notificationsEnabled);
+    await prefs.setBool(_persistentNotificationKey, settings.persistentNotificationEnabled);
   }
 }
