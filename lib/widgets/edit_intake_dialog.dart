@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../models/water_intake.dart';
+import '../models/user_settings.dart';
+import '../providers/water_intake_provider.dart';
 import '../localization/app_localizations.dart';
 
 class EditIntakeDialog extends StatefulWidget {
   final WaterIntake intake;
   final Function(int amount, String drinkType) onConfirm;
-  
+
   const EditIntakeDialog({
     super.key,
     required this.intake,
@@ -20,36 +24,51 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
   late String selectedDrink;
   late int selectedAmount;
   late TextEditingController customAmountController;
-  
-  final List<String> drinkTypes = ['Water', 'Tea', 'Coffee', 'Juice', 'Milk'];
+
+  final List<String> defaultDrinkTypes = [
+    'Water',
+    'Tea',
+    'Coffee',
+    'Juice',
+    'Milk',
+  ];
   final List<int> presetAmounts = [100, 200, 250, 300, 500];
-  
+  List<String> allDrinkTypes = [];
+
   @override
   void initState() {
     super.initState();
     selectedDrink = widget.intake.note ?? 'Water';
     selectedAmount = widget.intake.amount;
-    customAmountController = TextEditingController(text: selectedAmount.toString());
+    customAmountController = TextEditingController(
+      text: selectedAmount.toString(),
+    );
   }
-  
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.watch<WaterIntakeProvider>();
+    final customDrinks = provider.userSettings.customDrinks;
+    allDrinkTypes = [
+      ...defaultDrinkTypes,
+      ...customDrinks.map((drink) => drink.name),
+    ];
+  }
+
   @override
   void dispose() {
     customAmountController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
         AppLocalizations.get('editDrink'),
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -68,33 +87,49 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: drinkTypes.map((drink) {
+              children: allDrinkTypes.map((drink) {
                 final isSelected = selectedDrink == drink;
                 IconData icon;
                 Color color;
-                
-                switch (drink) {
-                  case 'Tea':
-                    icon = Icons.local_cafe;
-                    color = Colors.brown;
-                    break;
-                  case 'Coffee':
-                    icon = Icons.coffee;
-                    color = Colors.brown.shade800;
-                    break;
-                  case 'Juice':
-                    icon = Icons.local_drink;
-                    color = Colors.orange;
-                    break;
-                  case 'Milk':
-                    icon = Icons.local_dining;
-                    color = Colors.grey.shade600;
-                    break;
-                  default:
-                    icon = Icons.water_drop;
-                    color = Colors.blue.shade400;
+
+                // Check if it's a custom drink
+                final provider = context.read<WaterIntakeProvider>();
+                final customDrink = provider.userSettings.customDrinks
+                    .firstWhere(
+                      (d) => d.name == drink,
+                      orElse: () =>
+                          CustomDrink(id: '', name: '', color: Colors.blue),
+                    );
+
+                if (customDrink.id.isNotEmpty) {
+                  // It's a custom drink
+                  icon = Icons.opacity;
+                  color = customDrink.color;
+                } else {
+                  // Default drinks
+                  switch (drink) {
+                    case 'Tea':
+                      icon = Symbols.emoji_food_beverage;
+                      color = Colors.brown;
+                      break;
+                    case 'Coffee':
+                      icon = Symbols.coffee;
+                      color = Colors.brown.shade800;
+                      break;
+                    case 'Juice':
+                      icon = Symbols.local_bar;
+                      color = Colors.orange;
+                      break;
+                    case 'Milk':
+                      icon = Symbols.local_drink;
+                      color = Colors.grey.shade600;
+                      break;
+                    default:
+                      icon = Symbols.water_full;
+                      color = Colors.blue.shade400;
+                  }
                 }
-                
+
                 return GestureDetector(
                   onTap: () {
                     setState(() {
@@ -102,12 +137,21 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? color.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surfaceContainerLowest,
+                      color: isSelected
+                          ? color.withValues(alpha: 0.1)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? color : Theme.of(context).dividerColor,
+                        color: isSelected
+                            ? color
+                            : Theme.of(context).dividerColor,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -117,15 +161,27 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
                         Icon(
                           icon,
                           size: 18,
-                          color: isSelected ? color : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          color: isSelected
+                              ? color
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          drink,
+                          customDrink.id.isNotEmpty
+                              ? drink
+                              : AppLocalizations.getDrinkName(drink),
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? color : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: isSelected
+                                ? color
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -157,7 +213,10 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFF42A5F5).withValues(alpha: 0.1)
@@ -174,7 +233,9 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
                       '$amount mL',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         color: isSelected
                             ? const Color(0xFF42A5F5)
                             : Colors.grey.shade700,
@@ -194,7 +255,10 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
               onChanged: (value) {
                 if (value.isNotEmpty) {

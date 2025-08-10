@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../providers/water_intake_provider.dart';
 import '../widgets/modern_water_glass.dart';
 import '../widgets/drink_settings_dialog.dart';
@@ -24,48 +25,51 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(
         child: Consumer<WaterIntakeProvider>(
           builder: (context, provider, child) {
-          final progress = provider.progress.clamp(0.0, 1.0);
-          
-          return Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                  ModernWaterGlass(
-                    waterLevel: progress,
-                    currentAmount: provider.todayTotal,
-                    goalAmount: provider.userSettings.dailyGoal,
+            final progress = provider.progress.clamp(0.0, 1.0);
+
+            return Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
                   ),
-                  const SizedBox(height: 24),
-                  Row(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildMainDrinkButton(
-                        context,
-                        amount: currentAmount,
-                        drinkType: currentDrinkType,
-                        onTap: () async => await provider.addWaterIntake(
-                          currentAmount,
-                          note: currentDrinkType,
-                          drinkType: currentDrinkType.toLowerCase(),
-                        ),
+                      ModernWaterGlass(
+                        waterLevel: progress,
+                        currentAmount: provider.todayTotal,
+                        goalAmount: provider.userSettings.dailyGoal,
                       ),
-                      const SizedBox(width: 12),
-                      _buildSettingsIcon(context),
-                      const SizedBox(width: 12),
-                      _buildHistoryIcon(context),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildMainDrinkButton(
+                            context,
+                            amount: currentAmount,
+                            drinkType: currentDrinkType,
+                            onTap: () async => await provider.addWaterIntake(
+                              currentAmount,
+                              note: currentDrinkType,
+                              drinkType: currentDrinkType,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          _buildSettingsIcon(context),
+                          const SizedBox(width: 12),
+                          _buildHistoryIcon(context),
+                        ],
+                      ),
+                      const SizedBox(height: 40),
                     ],
                   ),
-                  const SizedBox(height: 40),
-                  ],
                 ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -93,15 +97,9 @@ class _MainScreenState extends State<MainScreen> {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF87CEEB).withOpacity(0.3),
-          ),
+          border: Border.all(color: const Color(0xFF87CEEB).withOpacity(0.3)),
         ),
-        child: const Icon(
-          Icons.history,
-          color: Color(0xFF87CEEB),
-          size: 24,
-        ),
+        child: const Icon(Icons.history, color: Color(0xFF87CEEB), size: 24),
       ),
     );
   }
@@ -119,10 +117,7 @@ class _MainScreenState extends State<MainScreen> {
         height: 56,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFF64B5F6),
-              Color(0xFF42A5F5),
-            ],
+            colors: [Color(0xFF64B5F6), Color(0xFF42A5F5)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -133,7 +128,7 @@ class _MainScreenState extends State<MainScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.water_drop,
+                Symbols.water_full,
                 color: Theme.of(context).colorScheme.onPrimary,
                 size: 20,
               ),
@@ -155,34 +150,59 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildSettingsIcon(BuildContext context) {
-    IconData drinkIcon = Icons.water_drop;
+    IconData drinkIcon = Symbols.water_full;
     Color drinkColor = Colors.blue[400]!;
-    
+
+    // Check if it's a custom drink first
+    final provider = context.read<WaterIntakeProvider>();
+    final customDrinks = provider.userSettings.customDrinks;
+
+    // Find matching custom drink
+    for (final drink in customDrinks) {
+      if (drink.name == currentDrinkType) {
+        // It's a custom drink
+        drinkIcon = Icons.opacity;
+        drinkColor = drink.color;
+        // Return early since we found a custom drink
+        return _buildSettingsIconWidget(context, drinkIcon, drinkColor);
+      }
+    }
+
+    // Default drinks
     switch (currentDrinkType) {
       case 'Tea':
-        drinkIcon = Icons.local_cafe;
+        drinkIcon = Symbols.emoji_food_beverage;
         drinkColor = Colors.brown;
         break;
       case 'Coffee':
-        drinkIcon = Icons.coffee;
+        drinkIcon = Symbols.coffee;
         drinkColor = Colors.brown[800]!;
         break;
       case 'Juice':
-        drinkIcon = Icons.local_drink;
+        drinkIcon = Symbols.local_bar;
         drinkColor = Colors.orange;
         break;
       case 'Milk':
-        drinkIcon = Icons.local_dining;
+        drinkIcon = Symbols.local_drink;
         drinkColor = Colors.grey[600]!;
         break;
     }
-    
+
+    return _buildSettingsIconWidget(context, drinkIcon, drinkColor);
+  }
+
+  Widget _buildSettingsIconWidget(
+    BuildContext context,
+    IconData icon,
+    Color color,
+  ) {
     return GestureDetector(
       onTap: () {
         showDialog(
           context: context,
           builder: (context) => DrinkSettingsDialog(
             currentAmount: currentAmount,
+            currentDrinkType: currentDrinkType,
             onConfirm: (amount, drinkType) {
               setState(() {
                 currentAmount = amount;
@@ -206,13 +226,8 @@ class _MainScreenState extends State<MainScreen> {
           ),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(
-          drinkIcon,
-          color: drinkColor,
-          size: 24,
-        ),
+        child: Icon(icon, color: color, size: 24),
       ),
     );
   }
-
 }

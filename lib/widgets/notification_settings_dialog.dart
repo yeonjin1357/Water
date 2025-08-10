@@ -4,6 +4,7 @@ import '../providers/water_intake_provider.dart';
 import '../models/user_settings.dart';
 import '../localization/app_localizations.dart';
 import '../services/notification_service.dart';
+import 'reminder_edit_dialog.dart';
 
 class NotificationSettingsDialog extends StatefulWidget {
   const NotificationSettingsDialog({super.key});
@@ -17,12 +18,8 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   
-  late bool _notificationsEnabled;
-  late TimeOfDay _startTime;
-  late TimeOfDay _endTime;
-  late int _intervalMinutes;
-  
-  final NotificationService _notificationService = NotificationService();
+  late List<WaterReminder> _reminders;
+  bool _canScheduleExactAlarms = true;
   
   @override
   void initState() {
@@ -38,52 +35,26 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
     _fadeController.forward();
     
     final provider = context.read<WaterIntakeProvider>();
-    _notificationsEnabled = provider.userSettings.notificationsEnabled;
-    _startTime = provider.userSettings.reminderStartTime;
-    _endTime = provider.userSettings.reminderEndTime;
-    _intervalMinutes = provider.userSettings.reminderInterval;
+    _reminders = List.from(provider.userSettings.waterReminders);
+    
+    // Check exact alarm permission
+    _checkExactAlarmPermission();
+  }
+  
+  Future<void> _checkExactAlarmPermission() async {
+    final notificationService = NotificationService();
+    final canSchedule = await notificationService.canScheduleExactAlarms();
+    if (mounted) {
+      setState(() {
+        _canScheduleExactAlarms = canSchedule;
+      });
+    }
   }
   
   @override
   void dispose() {
     _fadeController.dispose();
     super.dispose();
-  }
-  
-  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: isStartTime ? _startTime : _endTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              hourMinuteShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              dayPeriodShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    
-    if (picked != null) {
-      setState(() {
-        if (isStartTime) {
-          _startTime = picked;
-        } else {
-          _endTime = picked;
-        }
-      });
-    }
   }
   
   String _formatTime(TimeOfDay time) {
@@ -94,75 +65,109 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
   
   Future<void> _saveSettings() async {
     final provider = context.read<WaterIntakeProvider>();
+    final notificationService = NotificationService();
     
     final newSettings = UserSettings(
       dailyGoal: provider.userSettings.dailyGoal,
-      reminderInterval: _intervalMinutes,
-      reminderStartTime: _startTime,
-      reminderEndTime: _endTime,
+      reminderInterval: provider.userSettings.reminderInterval,
+      reminderStartTime: provider.userSettings.reminderStartTime,
+      reminderEndTime: provider.userSettings.reminderEndTime,
       defaultAmount: provider.userSettings.defaultAmount,
       isDarkMode: provider.userSettings.isDarkMode,
       language: provider.userSettings.language,
-      notificationsEnabled: _notificationsEnabled,
+      notificationsEnabled: _reminders.isNotEmpty,
       persistentNotificationEnabled: provider.userSettings.persistentNotificationEnabled,
+      customDrinks: provider.userSettings.customDrinks,
+      waterReminders: _reminders,
     );
     
     await provider.updateSettings(newSettings);
     
-    // Schedule or cancel notifications based on settings
-    if (_notificationsEnabled) {
-      try {
-        await _notificationService.scheduleWaterReminders(
-          startTime: _startTime,
-          endTime: _endTime,
-          intervalMinutes: _intervalMinutes,
-        );
-        
-        if (mounted) {
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('알림이 설정되었습니다'),
-              backgroundColor: Color(0xFF42A5F5),
-            ),
-          );
-        }
-      } catch (e) {
-        // Still save settings even if notification scheduling fails
-        if (mounted) {
-          Navigator.of(context).pop();
-          
-          String errorMessage = '알림이 설정되었습니다 (매 시간 알림)';
-          Color backgroundColor = const Color(0xFF42A5F5);
-          
-          if (e.toString().contains('exact_alarms_not_permitted')) {
-            errorMessage = '정확한 시간 알림 권한이 없어 매 시간 알림으로 설정되었습니다.\n'
-                          '설정 > 앱 > 알람 및 리마인더에서 권한을 허용해주세요.';
-            backgroundColor = Colors.orange;
-          }
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: backgroundColor,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      }
+    // 알림 스케줄링
+    if (_reminders.isNotEmpty) {
+      await notificationService.scheduleWaterReminderNotifications(_reminders);
     } else {
-      await _notificationService.cancelAllNotifications();
-      
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('알림이 해제되었습니다'),
-            backgroundColor: Color(0xFF42A5F5),
-          ),
-        );
-      }
+      await notificationService.cancelWaterReminders();
     }
+    
+    // 상태바 알림이 켜져있으면 재설정
+    if (provider.userSettings.persistentNotificationEnabled) {
+      await notificationService.showPersistentNotification(
+        currentAmount: provider.todayTotal,
+        dailyGoal: provider.userSettings.dailyGoal,
+      );
+    }
+    
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _reminders.isEmpty ? AppLocalizations.get('allNotificationsDisabled') : AppLocalizations.get('notificationSaved')
+          ),
+          backgroundColor: const Color(0xFF42A5F5),
+        ),
+      );
+    }
+  }
+  
+  void _addReminder() {
+    showDialog(
+      context: context,
+      builder: (context) => ReminderEditDialog(
+        onSave: (reminder) {
+          setState(() {
+            _reminders.add(reminder);
+          });
+        },
+      ),
+    );
+  }
+  
+  void _editReminder(WaterReminder reminder) {
+    showDialog(
+      context: context,
+      builder: (context) => ReminderEditDialog(
+        reminder: reminder,
+        onSave: (updatedReminder) {
+          setState(() {
+            final index = _reminders.indexWhere((r) => r.id == reminder.id);
+            if (index != -1) {
+              _reminders[index] = updatedReminder;
+            }
+          });
+        },
+      ),
+    );
+  }
+  
+  void _deleteReminder(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(AppLocalizations.get('deleteNotification')),
+        content: Text(AppLocalizations.get('deleteNotificationConfirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.get('cancel')),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _reminders.removeWhere((r) => r.id == id);
+              });
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppLocalizations.get('delete')),
+          ),
+        ],
+      ),
+    );
   }
   
   @override
@@ -175,8 +180,7 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
         ),
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9,
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             gradient: LinearGradient(
@@ -188,131 +192,87 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
               ],
             ),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 24),
-                _buildNotificationToggle(context),
-                if (_notificationsEnabled) ...[
-                  const SizedBox(height: 24),
-                  _buildTimeSettings(context),
-                  const SizedBox(height: 20),
-                  _buildIntervalSettings(context),
-                ],
-                const SizedBox(height: 28),
-                _buildActionButtons(context),
-              ],
-            ),
+          child: Column(
+            children: [
+              _buildHeader(context),
+              if (!_canScheduleExactAlarms) _buildPermissionWarning(context),
+              Expanded(
+                child: _reminders.isEmpty
+                    ? _buildEmptyState(context)
+                    : _buildRemindersList(context),
+              ),
+              _buildActionButtons(context),
+            ],
           ),
         ),
       ),
     );
   }
   
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(
-            Icons.notifications,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '알림 설정',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '물 마시기 리마인더를 설정하세요',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildNotificationToggle(BuildContext context) {
+  Widget _buildPermissionWarning(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _notificationsEnabled 
-              ? const Color(0xFF4CAF50).withOpacity(0.3)
-              : Theme.of(context).dividerColor.withOpacity(0.2),
+          color: Colors.orange.withOpacity(0.3),
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            _notificationsEnabled 
-                ? Icons.notifications_active 
-                : Icons.notifications_off,
-            color: _notificationsEnabled 
-                ? const Color(0xFF4CAF50)
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-            size: 28,
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 24,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '알림 활성화',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  AppLocalizations.get('exactAlarmPermission'),
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _notificationsEnabled ? '켜짐' : '꺼짐',
+                  AppLocalizations.get('exactAlarmPermissionDesc'),
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
             ),
           ),
-          Transform.scale(
-            scale: 1.1,
-            child: Switch(
-              value: _notificationsEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _notificationsEnabled = value;
-                });
-              },
-              activeColor: const Color(0xFF4CAF50),
-              activeTrackColor: const Color(0xFF4CAF50).withOpacity(0.3),
+          TextButton(
+            onPressed: () async {
+              final notificationService = NotificationService();
+              await notificationService.openAlarmPermissionSettings();
+              // 설정에서 돌아온 후 권한 재확인
+              Future.delayed(const Duration(seconds: 1), () {
+                _checkExactAlarmPermission();
+              });
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              backgroundColor: Colors.orange.withOpacity(0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              AppLocalizations.get('permissionSettings'),
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -320,260 +280,493 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
     );
   }
   
-  Widget _buildTimeSettings(BuildContext context) {
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.notifications,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.get('notificationSettings'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.get('notificationCount', _reminders.length.toString()),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Test notification buttons (for debugging)
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              final notificationService = NotificationService();
+              if (value == 'instant') {
+                await notificationService.showTestNotification();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.get('testNotificationSent')),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else if (value == 'scheduled') {
+                await notificationService.scheduleTestNotificationIn10Seconds();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.get('testNotificationScheduled10s')),
+                      duration: Duration(seconds: 3),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                }
+              } else if (value == 'clear_all') {
+                await notificationService.clearAllAndReset();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.get('allNotificationsCleared')),
+                      duration: Duration(seconds: 2),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } else if (value == 'check_permission') {
+                final canSchedule = await notificationService.canScheduleExactAlarms();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(canSchedule 
+                          ? AppLocalizations.get('permissionGranted') 
+                          : AppLocalizations.get('permissionDenied')),
+                      duration: const Duration(seconds: 3),
+                      backgroundColor: canSchedule ? Colors.green : Colors.orange,
+                    ),
+                  );
+                }
+              } else if (value == 'periodic') {
+                await notificationService.scheduleSimpleTest();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.get('periodicTestStarted')),
+                      duration: Duration(seconds: 3),
+                      backgroundColor: Colors.purple,
+                    ),
+                  );
+                }
+              } else if (value == '1min') {
+                await notificationService.scheduleTestNotificationIn1Minute();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.get('testNotificationScheduled1m')),
+                      duration: Duration(seconds: 3),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'instant',
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_active, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('instantTest')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'scheduled',
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('scheduledTest10s')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: '1min',
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer, size: 18, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('scheduledTest1m')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'periodic',
+                child: Row(
+                  children: [
+                    const Icon(Icons.repeat, size: 18, color: Colors.purple),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('periodicTest')),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'clear_all',
+                child: Row(
+                  children: [
+                    const Icon(Icons.clear_all, size: 18, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('clearAllNotifications')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'check_permission',
+                child: Row(
+                  children: [
+                    const Icon(Icons.security, size: 18, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.get('checkPermission')),
+                  ],
+                ),
+              ),
+            ],
+            icon: const Icon(
+              Icons.bug_report,
+              color: Colors.orange,
+              size: 20,
+            ),
+          ),
+          IconButton(
+            onPressed: _addReminder,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF42A5F5).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Color(0xFF42A5F5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.notifications_off,
+            size: 80,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            AppLocalizations.get('noNotifications'),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppLocalizations.get('addNotificationHint'),
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildRemindersList(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.schedule,
-              size: 18,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '알림 시간 설정',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _reminders.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final reminder = _reminders[index];
+              return _buildReminderItem(context, reminder);
+            },
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildTimeCard(
-                context,
-                '시작 시간',
-                _startTime,
-                Icons.wb_sunny,
-                const Color(0xFFFFB74D),
-                () => _selectTime(context, true),
-              ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            AppLocalizations.get('swipeDeleteHint'),
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildTimeCard(
-                context,
-                '종료 시간',
-                _endTime,
-                Icons.nightlight,
-                const Color(0xFF7E57C2),
-                () => _selectTime(context, false),
-              ),
-            ),
-          ],
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );
   }
   
-  Widget _buildTimeCard(
-    BuildContext context,
-    String label,
-    TimeOfDay time,
-    IconData icon,
-    Color iconColor,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
+  Widget _buildReminderItem(BuildContext context, WaterReminder reminder) {
+    return Dismissible(
+      key: Key(reminder.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              iconColor.withOpacity(0.1),
-              iconColor.withOpacity(0.05),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF6B6B), Color(0xFFFF5252)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(
+          Icons.delete_outline,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(AppLocalizations.get('deleteNotification')),
+            content: Text(AppLocalizations.get('deleteNotificationConfirm')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(AppLocalizations.get('cancel')),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(AppLocalizations.get('delete')),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: iconColor.withOpacity(0.3),
+        );
+      },
+      onDismissed: (direction) {
+        setState(() {
+          _reminders.removeWhere((r) => r.id == reminder.id);
+        });
+      },
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _editReminder(reminder),
+          onLongPress: () {
+            // 길게 누르면 삭제 옵션 표시
+            showModalBottomSheet(
+              context: context,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (context) => Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.edit, color: Color(0xFF42A5F5)),
+                      title: Text(AppLocalizations.get('editNotification')),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _editReminder(reminder);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.delete, color: Colors.red),
+                      title: Text(AppLocalizations.get('deleteNotification')),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _deleteReminder(reminder.id);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: reminder.isEnabled
+                    ? const Color(0xFF4CAF50).withOpacity(0.3)
+                    : Theme.of(context).dividerColor.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: reminder.isEnabled
+                          ? [const Color(0xFF66BB6A), const Color(0xFF4CAF50)]
+                          : [Colors.grey.shade400, Colors.grey.shade500],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _formatTime(reminder.time),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (reminder.label.isNotEmpty) ...[
+                        Text(
+                          reminder.label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Text(
+                        reminder.getWeekdaysText(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: reminder.isEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      final index = _reminders.indexWhere((r) => r.id == reminder.id);
+                      if (index != -1) {
+                        _reminders[index] = WaterReminder(
+                          id: reminder.id,
+                          time: reminder.time,
+                          weekdays: reminder.weekdays,
+                          isEnabled: value,
+                          label: reminder.label,
+                        );
+                      }
+                    });
+                  },
+                  activeColor: const Color(0xFF4CAF50),
+                  activeTrackColor: const Color(0xFF4CAF50).withOpacity(0.3),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _formatTime(time),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
   
-  Widget _buildIntervalSettings(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.timer,
-              size: 18,
-              color: Theme.of(context).colorScheme.primary,
+  Widget _buildActionButtons(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.get('cancel')),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '알림 간격',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLowest.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_intervalMinutes}분마다 알림',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF42A5F5).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${(_intervalMinutes / 60).toStringAsFixed(1)}시간',
-                      style: const TextStyle(
-                        color: Color(0xFF42A5F5),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                ),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4CAF50).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: const Color(0xFF42A5F5),
-                  inactiveTrackColor: const Color(0xFF42A5F5).withOpacity(0.2),
-                  thumbColor: const Color(0xFF42A5F5),
-                  overlayColor: const Color(0xFF42A5F5).withOpacity(0.2),
-                  trackHeight: 6,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              child: ElevatedButton(
+                onPressed: _saveSettings,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
                 ),
-                child: Slider(
-                  value: _intervalMinutes.toDouble(),
-                  min: 30,
-                  max: 180,
-                  divisions: 10,
-                  onChanged: (value) {
-                    setState(() {
-                      _intervalMinutes = value.round();
-                    });
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '30분',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ),
-                    Text(
-                      '3시간',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.get('cancel')),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
-              ),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4CAF50).withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ElevatedButton(
-              onPressed: _saveSettings,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              child: Text(
-                AppLocalizations.get('save'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                child: Text(
+                  AppLocalizations.get('save'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

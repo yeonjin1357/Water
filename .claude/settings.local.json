@@ -18,7 +18,8 @@
       "Bash(mkdir:*)",
       "Bash(gradlew:*)",
       "Bash(adb:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "WebFetch(domain:developer.android.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

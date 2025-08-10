@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_settings.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 class PreferencesService {
   static const String _dailyGoalKey = 'daily_goal';
@@ -12,6 +13,8 @@ class PreferencesService {
   static const String _languageKey = 'language';
   static const String _notificationsEnabledKey = 'notifications_enabled';
   static const String _persistentNotificationKey = 'persistent_notification';
+  static const String _customDrinksKey = 'custom_drinks';
+  static const String _waterRemindersKey = 'water_reminders';
 
   Future<UserSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,6 +24,34 @@ class PreferencesService {
 
     final startParts = startTimeString.split(':');
     final endParts = endTimeString.split(':');
+
+    // Load custom drinks
+    List<CustomDrink> customDrinks = [];
+    final customDrinksJson = prefs.getString(_customDrinksKey);
+    if (customDrinksJson != null) {
+      try {
+        final List<dynamic> drinksList = jsonDecode(customDrinksJson);
+        customDrinks = drinksList
+            .map((drinkMap) => CustomDrink.fromMap(drinkMap))
+            .toList();
+      } catch (e) {
+        print('Error loading custom drinks: $e');
+      }
+    }
+
+    // Load water reminders
+    List<WaterReminder> waterReminders = [];
+    final waterRemindersJson = prefs.getString(_waterRemindersKey);
+    if (waterRemindersJson != null) {
+      try {
+        final List<dynamic> remindersList = jsonDecode(waterRemindersJson);
+        waterReminders = remindersList
+            .map((reminderMap) => WaterReminder.fromMap(reminderMap))
+            .toList();
+      } catch (e) {
+        print('Error loading water reminders: $e');
+      }
+    }
 
     return UserSettings(
       dailyGoal: prefs.getInt(_dailyGoalKey) ?? 2000,
@@ -38,6 +69,8 @@ class PreferencesService {
       language: prefs.getString(_languageKey) ?? 'ko',
       notificationsEnabled: prefs.getBool(_notificationsEnabledKey) ?? false,
       persistentNotificationEnabled: prefs.getBool(_persistentNotificationKey) ?? false,
+      customDrinks: customDrinks,
+      waterReminders: waterReminders,
     );
   }
 
@@ -59,5 +92,13 @@ class PreferencesService {
     await prefs.setString(_languageKey, settings.language);
     await prefs.setBool(_notificationsEnabledKey, settings.notificationsEnabled);
     await prefs.setBool(_persistentNotificationKey, settings.persistentNotificationEnabled);
+    
+    // Save custom drinks
+    final customDrinksList = settings.customDrinks.map((drink) => drink.toMap()).toList();
+    await prefs.setString(_customDrinksKey, jsonEncode(customDrinksList));
+    
+    // Save water reminders
+    final waterRemindersList = settings.waterReminders.map((reminder) => reminder.toMap()).toList();
+    await prefs.setString(_waterRemindersKey, jsonEncode(waterRemindersList));
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../providers/water_intake_provider.dart';
 import '../models/water_intake.dart';
+import '../models/user_settings.dart';
 import '../localization/app_localizations.dart';
 import 'history_bottom_sheet.dart';
 import 'edit_intake_dialog.dart';
@@ -13,7 +15,8 @@ class HistorySection extends StatefulWidget {
   State<HistorySection> createState() => _HistorySectionState();
 }
 
-class _HistorySectionState extends State<HistorySection> with TickerProviderStateMixin {
+class _HistorySectionState extends State<HistorySection>
+    with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   final List<AnimationController> _itemControllers = [];
@@ -26,13 +29,10 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutQuart,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutQuart),
+        );
     _slideController.forward();
   }
 
@@ -110,9 +110,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
             child: Column(
               children: [
                 _buildHeader(context),
-                Expanded(
-                  child: _buildContent(context, provider),
-                ),
+                Expanded(child: _buildContent(context, provider)),
               ],
             ),
           ),
@@ -137,11 +135,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.history,
-                  color: Colors.white,
-                  size: 18,
-                ),
+                child: const Icon(Icons.history, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
               Column(
@@ -162,7 +156,9 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                         '${provider.todayIntakes.length} ${AppLocalizations.get('entries')}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.5),
                         ),
                       );
                     },
@@ -213,11 +209,19 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                 begin: const Offset(0.3, 0),
                 end: Offset.zero,
               ).animate(_itemAnimations[index]),
-              child: _buildHistoryItem(context, provider.todayIntakes[index], provider),
+              child: _buildHistoryItem(
+                context,
+                provider.todayIntakes[index],
+                provider,
+              ),
             ),
           );
         }
-        return _buildHistoryItem(context, provider.todayIntakes[index], provider);
+        return _buildHistoryItem(
+          context,
+          provider.todayIntakes[index],
+          provider,
+        );
       },
     );
   }
@@ -240,7 +244,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.water_drop_outlined,
+              Symbols.water_drop,
               size: 40,
               color: const Color(0xFF87CEEB).withOpacity(0.5),
             ),
@@ -267,12 +271,17 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, WaterIntake intake, WaterIntakeProvider provider) {
-    final time = '${intake.timestamp.hour.toString().padLeft(2, '0')}:${intake.timestamp.minute.toString().padLeft(2, '0')}';
+  Widget _buildHistoryItem(
+    BuildContext context,
+    WaterIntake intake,
+    WaterIntakeProvider provider,
+  ) {
+    final time =
+        '${intake.timestamp.hour.toString().padLeft(2, '0')}:${intake.timestamp.minute.toString().padLeft(2, '0')}';
     final drinkType = intake.note ?? 'Water';
-    
+
     Map<String, dynamic> drinkStyle = _getDrinkStyle(drinkType);
-    
+
     return Dismissible(
       key: Key(intake.id),
       direction: DismissDirection.endToStart,
@@ -286,11 +295,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: const Icon(
-          Icons.delete_outline,
-          color: Colors.white,
-          size: 24,
-        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 24),
       ),
       confirmDismiss: (direction) async {
         return await showDialog(
@@ -326,7 +331,9 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
             end: Alignment.bottomRight,
             colors: [
               Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
             ],
           ),
           borderRadius: BorderRadius.circular(20),
@@ -402,7 +409,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          drinkType,
+                          _getDrinkDisplayName(drinkType),
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -415,14 +422,18 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                             Icon(
                               Icons.access_time,
                               size: 12,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.4),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               time,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.5),
                               ),
                             ),
                           ],
@@ -431,7 +442,10 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: drinkStyle['bgColor'].withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -454,11 +468,46 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
     );
   }
 
+  String _getDrinkDisplayName(String drinkType) {
+    // Check if it's a custom drink
+    final provider = context.read<WaterIntakeProvider>();
+    final customDrink = provider.userSettings.customDrinks.firstWhere(
+      (drink) => drink.name == drinkType,
+      orElse: () => CustomDrink(id: '', name: '', color: Colors.blue),
+    );
+
+    if (customDrink.id.isNotEmpty) {
+      return customDrink.name;
+    }
+
+    // Use localization for default drinks
+    return AppLocalizations.getDrinkName(drinkType);
+  }
+
   Map<String, dynamic> _getDrinkStyle(String drinkType) {
+    // Check if it's a custom drink
+    final provider = context.read<WaterIntakeProvider>();
+    final customDrink = provider.userSettings.customDrinks.firstWhere(
+      (drink) => drink.name == drinkType,
+      orElse: () => CustomDrink(id: '', name: '', color: Colors.blue),
+    );
+
+    if (customDrink.id.isNotEmpty) {
+      // It's a custom drink
+      return {
+        'icon': Icons.opacity,
+        'color': customDrink.color,
+        'gradient': [customDrink.color.withOpacity(0.8), customDrink.color],
+        'bgColor': customDrink.color.withOpacity(0.1),
+        'shadowColor': customDrink.color,
+      };
+    }
+
+    // Default drinks
     switch (drinkType) {
       case 'Tea':
         return {
-          'icon': Icons.local_cafe,
+          'icon': Symbols.emoji_food_beverage,
           'color': Colors.brown,
           'gradient': [const Color(0xFFBCAAA4), const Color(0xFF8D6E63)],
           'bgColor': Colors.brown[50],
@@ -466,7 +515,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
         };
       case 'Coffee':
         return {
-          'icon': Icons.coffee,
+          'icon': Symbols.coffee,
           'color': Colors.brown[800],
           'gradient': [const Color(0xFF6D4C41), const Color(0xFF4E342E)],
           'bgColor': Colors.brown[50],
@@ -474,7 +523,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
         };
       case 'Juice':
         return {
-          'icon': Icons.local_drink,
+          'icon': Symbols.local_bar,
           'color': Colors.orange,
           'gradient': [const Color(0xFFFFB74D), const Color(0xFFFF9800)],
           'bgColor': Colors.orange[50],
@@ -482,7 +531,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
         };
       case 'Milk':
         return {
-          'icon': Icons.local_dining,
+          'icon': Symbols.local_drink,
           'color': Colors.grey[600],
           'gradient': [const Color(0xFFBDBDBD), const Color(0xFF757575)],
           'bgColor': Colors.grey[50],
@@ -490,7 +539,7 @@ class _HistorySectionState extends State<HistorySection> with TickerProviderStat
         };
       default:
         return {
-          'icon': Icons.water_drop,
+          'icon': Symbols.water_full,
           'color': Colors.blue[400],
           'gradient': [const Color(0xFF64B5F6), const Color(0xFF42A5F5)],
           'bgColor': Colors.blue[50],

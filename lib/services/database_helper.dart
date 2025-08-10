@@ -34,7 +34,7 @@ class DatabaseHelper {
         amount INTEGER NOT NULL,
         timestamp TEXT NOT NULL,
         note TEXT,
-        drinkType TEXT DEFAULT 'water'
+        drinkType TEXT DEFAULT 'Water'
       )
     ''');
   }
@@ -46,7 +46,7 @@ class DatabaseHelper {
       final bool columnExists = tableInfo.any((column) => column['name'] == 'drinkType');
       
       if (!columnExists) {
-        await db.execute('ALTER TABLE water_intakes ADD COLUMN drinkType TEXT DEFAULT "water"');
+        await db.execute('ALTER TABLE water_intakes ADD COLUMN drinkType TEXT DEFAULT "Water"');
       }
     }
   }
@@ -116,7 +116,7 @@ class DatabaseHelper {
       'water_intakes',
       orderBy: 'timestamp DESC',
     );
-
+    
     return List.generate(maps.length, (i) {
       return WaterIntake.fromMap(maps[i]);
     });
@@ -185,9 +185,8 @@ class DatabaseHelper {
     
     final Map<String, int> stats = {};
     for (var row in result) {
-      stats[row['drinkType'] ?? 'water'] = row['total'] as int;
+      stats[row['drinkType'] ?? 'Water'] = row['total'] as int;
     }
-    
     return stats;
   }
 

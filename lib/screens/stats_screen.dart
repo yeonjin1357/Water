@@ -36,7 +36,12 @@ class _StatsScreenState extends State<StatsScreen> {
     
     if (_selectedTabIndex == 0) {
       // Weekly view - get data for the selected week
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+      final startOfWeek = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day - (weekday - 1),
+      );
       _weeklyData = {};
       for (int i = 0; i < 7; i++) {
         final date = startOfWeek.add(Duration(days: i));
@@ -45,7 +50,12 @@ class _StatsScreenState extends State<StatsScreen> {
         _weeklyData[dateKey] = total;
       }
       
-      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final endOfWeek = DateTime(
+        startOfWeek.year,
+        startOfWeek.month,
+        startOfWeek.day + 6,
+        23, 59, 59,
+      );
       _drinkTypeData = await provider.getDrinkTypeStats(startOfWeek, endOfWeek);
     } else if (_selectedTabIndex == 1) {
       // Monthly view - group by weeks
@@ -72,7 +82,8 @@ class _StatsScreenState extends State<StatsScreen> {
         _monthlyData[weekKey] = dayCount > 0 ? (weekTotal / dayCount).round() : 0;
       }
       
-      _drinkTypeData = await provider.getDrinkTypeStats(firstDay, lastDay);
+      final endOfMonth = DateTime(lastDay.year, lastDay.month, lastDay.day, 23, 59, 59);
+      _drinkTypeData = await provider.getDrinkTypeStats(firstDay, endOfMonth);
     } else {
       // Yearly view - group by months
       _yearlyData = {};
@@ -97,7 +108,7 @@ class _StatsScreenState extends State<StatsScreen> {
       }
       
       final firstDay = DateTime(year, 1, 1);
-      final lastDay = DateTime(year, 12, 31);
+      final lastDay = DateTime(year, 12, 31, 23, 59, 59);
       _drinkTypeData = await provider.getDrinkTypeStats(firstDay, lastDay);
     }
     
@@ -202,21 +213,45 @@ class _StatsScreenState extends State<StatsScreen> {
     String dateText;
     bool canGoForward = false;
     final now = DateTime.now();
+    final isKorean = AppLocalizations.currentLanguage == 'ko';
     
     if (_selectedTabIndex == 0) {
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+      final startOfWeek = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day - (weekday - 1),
+      );
       final endOfWeek = startOfWeek.add(const Duration(days: 6));
-      dateText = '${DateFormat('MMM d').format(startOfWeek)} - ${DateFormat('MMM d, yyyy').format(endOfWeek)}';
+      if (isKorean) {
+        if (startOfWeek.year != endOfWeek.year) {
+          dateText = '${startOfWeek.year}년 ${startOfWeek.month}월 ${startOfWeek.day}일 - ${endOfWeek.year}년 ${endOfWeek.month}월 ${endOfWeek.day}일';
+        } else if (startOfWeek.month != endOfWeek.month) {
+          dateText = '${startOfWeek.month}월 ${startOfWeek.day}일 - ${endOfWeek.month}월 ${endOfWeek.day}일, ${endOfWeek.year}년';
+        } else {
+          dateText = '${startOfWeek.year}년 ${startOfWeek.month}월 ${startOfWeek.day}일 - ${endOfWeek.day}일';
+        }
+      } else {
+        dateText = '${DateFormat('MMM d').format(startOfWeek)} - ${DateFormat('MMM d, yyyy').format(endOfWeek)}';
+      }
       // Check if next week would be in the future
       final nextWeekStart = startOfWeek.add(const Duration(days: 7));
       canGoForward = !nextWeekStart.isAfter(now);
     } else if (_selectedTabIndex == 1) {
-      dateText = DateFormat('MMMM yyyy').format(_selectedDate);
+      if (isKorean) {
+        dateText = '${_selectedDate.year}년 ${_selectedDate.month}월';
+      } else {
+        dateText = DateFormat('MMMM yyyy').format(_selectedDate);
+      }
       // Check if next month would be in the future
       final nextMonth = DateTime(_selectedDate.year, _selectedDate.month + 1);
       canGoForward = !(nextMonth.year > now.year || (nextMonth.year == now.year && nextMonth.month > now.month));
     } else {
-      dateText = DateFormat('yyyy').format(_selectedDate);
+      if (isKorean) {
+        dateText = '${_selectedDate.year}년';
+      } else {
+        dateText = DateFormat('yyyy').format(_selectedDate);
+      }
       // Check if next year would be in the future
       canGoForward = _selectedDate.year < now.year;
     }
@@ -419,12 +454,12 @@ class _StatsScreenState extends State<StatsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Drink Types',
+          Text(
+            AppLocalizations.get('drinkTypes'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 24),
@@ -454,7 +489,12 @@ class _StatsScreenState extends State<StatsScreen> {
     
     if (_selectedTabIndex == 0) {
       // Weekly view
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
       
       for (int i = 0; i < 7; i++) {
         final date = startOfWeek.add(Duration(days: i));
@@ -565,7 +605,12 @@ class _StatsScreenState extends State<StatsScreen> {
                 if (_selectedTabIndex == 0) {
                   // Weekly view - show day numbers
                   if (value.toInt() >= 0 && value.toInt() < 7) {
-                    final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+                    final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
                     final date = startOfWeek.add(Duration(days: value.toInt()));
                     return Text(
                       date.day.toString(),
@@ -624,7 +669,12 @@ class _StatsScreenState extends State<StatsScreen> {
     
     if (_selectedTabIndex == 0) {
       // Weekly view
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+      final startOfWeek = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day - (weekday - 1),
+      );
       
       for (int i = 0; i < 7; i++) {
         final date = startOfWeek.add(Duration(days: i));
@@ -695,7 +745,12 @@ class _StatsScreenState extends State<StatsScreen> {
                 if (_selectedTabIndex == 0) {
                   // Weekly view - show day numbers
                   if (value.toInt() >= 0 && value.toInt() < 7) {
-                    final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+                    final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
                     final date = startOfWeek.add(Duration(days: value.toInt()));
                     return Text(
                       date.day.toString(),
@@ -787,7 +842,12 @@ class _StatsScreenState extends State<StatsScreen> {
     
     if (_selectedTabIndex == 0) {
       // Weekly view
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
       
       for (int i = 0; i < 7; i++) {
         final date = startOfWeek.add(Duration(days: i));
@@ -910,7 +970,12 @@ class _StatsScreenState extends State<StatsScreen> {
                 if (_selectedTabIndex == 0) {
                   // Weekly view - show day numbers
                   if (value.toInt() >= 0 && value.toInt() < 7) {
-                    final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+                    final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
                     final date = startOfWeek.add(Duration(days: value.toInt()));
                     return Text(
                       date.day.toString(),
@@ -976,7 +1041,12 @@ class _StatsScreenState extends State<StatsScreen> {
     
     if (_selectedTabIndex == 0) {
       // Weekly view
-      final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
       
       for (int i = 0; i < 7; i++) {
         final date = startOfWeek.add(Duration(days: i));
@@ -1056,7 +1126,12 @@ class _StatsScreenState extends State<StatsScreen> {
                 if (_selectedTabIndex == 0) {
                   // Weekly view - show day numbers
                   if (value.toInt() >= 0 && value.toInt() < 7) {
-                    final startOfWeek = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+                    final weekday = _selectedDate.weekday;
+                    final startOfWeek = DateTime(
+                      _selectedDate.year,
+                      _selectedDate.month,
+                      _selectedDate.day - (weekday - 1),
+                    );
                     final date = startOfWeek.add(Duration(days: value.toInt()));
                     return Text(
                       date.day.toString(),
@@ -1157,7 +1232,7 @@ class _StatsScreenState extends State<StatsScreen> {
             PieChartSectionData(
               color: Colors.grey.shade300,
               value: 100,
-              title: 'No data',
+              title: '',
               radius: 30,
               titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
             ),
@@ -1167,21 +1242,33 @@ class _StatsScreenState extends State<StatsScreen> {
     }
     
     final drinkColors = {
-      'water': const Color(0xFF4FC3F7),
-      'juice': const Color(0xFFFF9800),
-      'coffee': const Color(0xFF8BC34A),
-      'milk': const Color(0xFF9C27B0),
-      'tea': const Color(0xFFE91E63),
+      'Water': const Color(0xFF4FC3F7),
+      'Juice': const Color(0xFFFF9800),
+      'Coffee': const Color(0xFF8BC34A),
+      'Milk': const Color(0xFF9C27B0),
+      'Tea': const Color(0xFFE91E63),
     };
+    
+    // 커스텀 드링크 색상 추가
+    final provider = context.read<WaterIntakeProvider>();
+    for (var drink in provider.userSettings.customDrinks) {
+      drinkColors[drink.name] = drink.color;
+    }
     
     List<PieChartSectionData> sections = [];
     
-    _drinkTypeData.forEach((type, amount) {
+    // 섭취량이 많은 순서대로 정렬
+    var sortedDrinkData = _drinkTypeData.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    for (var entry in sortedDrinkData) {
+      final type = entry.key;
+      final amount = entry.value;
       if (amount > 0) {
         final percentage = (amount / total * 100).round();
         sections.add(
           PieChartSectionData(
-            color: drinkColors[type.toLowerCase()] ?? const Color(0xFF607D8B),
+            color: drinkColors[type] ?? const Color(0xFF607D8B),
             value: amount.toDouble(),
             title: '$percentage%',
             radius: 30,
@@ -1189,7 +1276,7 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
         );
       }
-    });
+    }
     
     return PieChart(
       PieChartData(
@@ -1204,12 +1291,18 @@ class _StatsScreenState extends State<StatsScreen> {
     final total = _drinkTypeData.values.fold<int>(0, (sum, value) => sum + value);
     
     final drinkColors = {
-      'water': const Color(0xFF4FC3F7),
-      'juice': const Color(0xFFFF9800),
-      'coffee': const Color(0xFF8BC34A),
-      'milk': const Color(0xFF9C27B0),
-      'tea': const Color(0xFFE91E63),
+      'Water': const Color(0xFF4FC3F7),
+      'Juice': const Color(0xFFFF9800),
+      'Coffee': const Color(0xFF8BC34A),
+      'Milk': const Color(0xFF9C27B0),
+      'Tea': const Color(0xFFE91E63),
     };
+    
+    // 커스텀 드링크 색상 추가
+    final provider = context.read<WaterIntakeProvider>();
+    for (var drink in provider.userSettings.customDrinks) {
+      drinkColors[drink.name] = drink.color;
+    }
     
     List<Map<String, dynamic>> drinkTypes = [];
     
@@ -1217,16 +1310,20 @@ class _StatsScreenState extends State<StatsScreen> {
       if (amount > 0) {
         final percentage = total > 0 ? (amount / total * 100).round() : 0;
         drinkTypes.add({
-          'name': type[0].toUpperCase() + type.substring(1),
+          'name': AppLocalizations.getDrinkName(type),
           'percent': '$percentage%',
-          'color': drinkColors[type.toLowerCase()] ?? const Color(0xFF607D8B),
+          'amount': amount,
+          'color': drinkColors[type] ?? const Color(0xFF607D8B),
         });
       }
     });
     
+    // 섭취량이 많은 순서대로 정렬
+    drinkTypes.sort((a, b) => b['amount'].compareTo(a['amount']));
+    
     if (drinkTypes.isEmpty) {
       drinkTypes = [
-        {'name': 'No data', 'percent': '0%', 'color': Colors.grey.shade300},
+        {'name': AppLocalizations.get('noData'), 'percent': '0%', 'color': Colors.grey.shade300},
       ];
     }
 
@@ -1248,7 +1345,10 @@ class _StatsScreenState extends State<StatsScreen> {
               const SizedBox(width: 8),
               Text(
                 '${type['name']} (${type['percent']})',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 12, 
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
               ),
             ],
           ),

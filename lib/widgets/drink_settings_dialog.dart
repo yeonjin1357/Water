@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../localization/app_localizations.dart';
+import '../providers/water_intake_provider.dart';
+import '../models/user_settings.dart';
+import 'custom_drink_dialog.dart';
 
 class DrinkSettingsDialog extends StatefulWidget {
   final int currentAmount;
+  final String currentDrinkType;
   final Function(int amount, String drinkType) onConfirm;
 
   const DrinkSettingsDialog({
     super.key,
     required this.currentAmount,
+    required this.currentDrinkType,
     required this.onConfirm,
   });
 
@@ -15,9 +22,10 @@ class DrinkSettingsDialog extends StatefulWidget {
   State<DrinkSettingsDialog> createState() => _DrinkSettingsDialogState();
 }
 
-class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerProviderStateMixin {
+class _DrinkSettingsDialogState extends State<DrinkSettingsDialog>
+    with TickerProviderStateMixin {
   late int selectedAmount;
-  String selectedDrink = 'Water';
+  late String selectedDrink;
   late AnimationController _fadeController;
   late AnimationController _scaleController;
   late Animation<double> _fadeAnimation;
@@ -26,18 +34,44 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
 
   final List<int> amounts = [100, 150, 200, 250, 300, 350, 400, 500];
   final List<Map<String, dynamic>> drinks = [
-    {'name': 'Water', 'icon': Icons.water_drop, 'color': Colors.blue, 'gradient': [Color(0xFF64B5F6), Color(0xFF42A5F5)]},
-    {'name': 'Tea', 'icon': Icons.local_cafe, 'color': Colors.brown, 'gradient': [Color(0xFFBCAAA4), Color(0xFF8D6E63)]},
-    {'name': 'Coffee', 'icon': Icons.coffee, 'color': Colors.brown[800], 'gradient': [Color(0xFF6D4C41), Color(0xFF4E342E)]},
-    {'name': 'Juice', 'icon': Icons.local_drink, 'color': Colors.orange, 'gradient': [Color(0xFFFFB74D), Color(0xFFFF9800)]},
-    {'name': 'Milk', 'icon': Icons.local_dining, 'color': Colors.grey[600], 'gradient': [Color(0xFFBDBDBD), Color(0xFF757575)]},
+    {
+      'name': 'Water',
+      'icon': Symbols.water_full,
+      'color': Colors.blue,
+      'gradient': [Color(0xFF64B5F6), Color(0xFF42A5F5)],
+    },
+    {
+      'name': 'Tea',
+      'icon': Symbols.emoji_food_beverage,
+      'color': Colors.brown,
+      'gradient': [Color(0xFFBCAAA4), Color(0xFF8D6E63)],
+    },
+    {
+      'name': 'Coffee',
+      'icon': Symbols.coffee,
+      'color': Colors.brown[800],
+      'gradient': [Color(0xFF6D4C41), Color(0xFF4E342E)],
+    },
+    {
+      'name': 'Juice',
+      'icon': Symbols.local_bar,
+      'color': Colors.orange,
+      'gradient': [Color(0xFFFFB74D), Color(0xFFFF9800)],
+    },
+    {
+      'name': 'Milk',
+      'icon': Symbols.local_drink,
+      'color': Colors.grey[600],
+      'gradient': [Color(0xFFBDBDBD), Color(0xFF757575)],
+    },
   ];
 
   @override
   void initState() {
     super.initState();
     selectedAmount = widget.currentAmount;
-    
+    selectedDrink = widget.currentDrinkType;
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -46,7 +80,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeIn,
@@ -55,11 +89,11 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       parent: _scaleController,
       curve: Curves.elasticOut,
     );
-    
+
     _fadeController.forward();
     _scaleController.forward();
   }
-  
+
   @override
   void dispose() {
     _fadeController.dispose();
@@ -80,7 +114,9 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
             child: Dialog(
               elevation: 24,
               backgroundColor: Colors.transparent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -127,7 +163,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       },
     );
   }
-  
+
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -142,11 +178,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.tune,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: Icon(Icons.tune, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
             Text(
@@ -166,10 +198,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.close,
-              size: 18,
-            ),
+            child: Icon(Icons.close, size: 18),
           ),
           onPressed: () => Navigator.pop(context),
           padding: EdgeInsets.zero,
@@ -178,14 +207,36 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       ],
     );
   }
-  
+
   Widget _buildDrinkSelection(BuildContext context) {
+    final provider = context.watch<WaterIntakeProvider>();
+    final customDrinks = provider.userSettings.customDrinks;
+
+    // Combine default drinks with custom drinks
+    final allDrinks = [
+      ...drinks,
+      ...customDrinks.map(
+        (customDrink) => {
+          'name': customDrink.name,
+          'icon': Icons.opacity,
+          'color': customDrink.color,
+          'gradient': [customDrink.color.withOpacity(0.8), customDrink.color],
+          'isCustom': true,
+          'id': customDrink.id,
+        },
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.local_drink, size: 18, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.local_drink,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 8),
             Text(
               AppLocalizations.get('selectDrink'),
@@ -202,10 +253,71 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
           height: 95,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: drinks.length,
+            itemCount: allDrinks.length + 1, // +1 for add button
             itemBuilder: (context, index) {
-              final drink = drinks[index];
+              // Add button at the end
+              if (index == allDrinks.length) {
+                return GestureDetector(
+                  onTap: () async {
+                    await showDialog(
+                      context: context,
+                      builder: (context) => CustomDrinkDialog(
+                        onConfirm: (name, color) {
+                          final newDrink = CustomDrink(
+                            id: DateTime.now().millisecondsSinceEpoch
+                                .toString(),
+                            name: name,
+                            color: color,
+                          );
+                          provider.addCustomDrink(newDrink);
+                        },
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 80,
+                    height: 95,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.3),
+                        width: 1.5,
+                        style: BorderStyle.solid,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 30,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          AppLocalizations.get('add'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final drink = allDrinks[index];
               final isSelected = selectedDrink == drink['name'];
+              final isCustom = drink['isCustom'] ?? false;
 
               return TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: isSelected ? 1 : 0),
@@ -219,6 +331,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                     },
                     child: Container(
                       width: 80,
+                      height: 95,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
                         gradient: isSelected
@@ -229,7 +342,9 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                               )
                             : null,
                         color: !isSelected
-                            ? Theme.of(context).colorScheme.surfaceContainerLowest
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerLowest
                             : null,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
@@ -241,39 +356,206 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: (drink['gradient'][0] as Color).withOpacity(0.3),
+                                  color: (drink['gradient'][0] as Color)
+                                      .withOpacity(0.3),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
                               ]
                             : [],
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Transform.scale(
-                            scale: 1 + (value * 0.1),
-                            child: Icon(
-                              drink['icon'],
-                              color: isSelected
-                                  ? Colors.white
-                                  : drink['color'],
-                              size: 32,
-                            ),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Transform.scale(
+                                scale: 1 + (value * 0.1),
+                                child: Icon(
+                                  drink['icon'],
+                                  color: isSelected
+                                      ? Colors.white
+                                      : drink['color'],
+                                  size: 30,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Text(
+                                  isCustom
+                                      ? drink['name']
+                                      : AppLocalizations.getDrinkName(
+                                          drink['name'],
+                                        ),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.7),
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            drink['name'],
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isSelected
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
+                          if (isCustom)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                offset: const Offset(0, 20),
+                                tooltip: AppLocalizations.get(
+                                  'tapToEditDelete',
+                                ),
+                                itemBuilder: (context) => [
+                                  PopupMenuItem<String>(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.edit_outlined,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(AppLocalizations.get('edit')),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.delete_outline,
+                                          size: 16,
+                                          color: Colors.red,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          AppLocalizations.get('delete'),
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    await showDialog(
+                                      context: context,
+                                      builder: (context) => CustomDrinkDialog(
+                                        drink: CustomDrink(
+                                          id: drink['id'],
+                                          name: drink['name'],
+                                          color: drink['color'],
+                                        ),
+                                        onConfirm: (name, color) {
+                                          final updatedDrink = CustomDrink(
+                                            id: drink['id'],
+                                            name: name,
+                                            color: color,
+                                          );
+                                          context
+                                              .read<WaterIntakeProvider>()
+                                              .updateCustomDrink(updatedDrink);
+                                        },
+                                      ),
+                                    );
+                                  } else if (value == 'delete') {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          AppLocalizations.get('deleteEntry'),
+                                        ),
+                                        content: Text(
+                                          AppLocalizations.get(
+                                            'deleteCustomDrink',
+                                            drink['name'],
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text(
+                                              AppLocalizations.get('cancel'),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: Text(
+                                              AppLocalizations.get('delete'),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed == true) {
+                                      context
+                                          .read<WaterIntakeProvider>()
+                                          .removeCustomDrink(drink['id']);
+                                      if (selectedDrink == drink['name']) {
+                                        setState(() {
+                                          selectedDrink = 'Water';
+                                        });
+                                      }
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Theme.of(context).colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.more_vert,
+                                    size: 14,
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.white,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -286,14 +568,18 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       ],
     );
   }
-  
+
   Widget _buildAmountSelection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.water, size: 18, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.water,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 8),
             Text(
               AppLocalizations.get('selectAmount'),
@@ -310,7 +596,9 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLowest.withOpacity(0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerLowest.withOpacity(0.5),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Wrap(
@@ -368,7 +656,9 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                         style: TextStyle(
                           color: isSelected
                               ? Colors.white
-                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -385,11 +675,13 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       ],
     );
   }
-  
+
   Widget _buildCustomAmountInput(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest.withOpacity(0.3),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerLowest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -420,7 +712,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
       ),
     );
   }
-  
+
   Widget _buildConfirmButton(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.95, end: 1),
@@ -459,11 +751,7 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog> with TickerPr
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      Icon(Icons.check_circle, color: Colors.white, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         '${AppLocalizations.get('confirm')} ($selectedAmount ml)',

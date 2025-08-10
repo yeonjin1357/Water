@@ -10,7 +10,7 @@ class WaterIntake {
     required this.amount,
     required this.timestamp,
     this.note,
-    this.drinkType = 'water',
+    this.drinkType = 'Water',
   });
 
   Map<String, dynamic> toMap() {
@@ -29,7 +29,7 @@ class WaterIntake {
       amount: map['amount'],
       timestamp: DateTime.parse(map['timestamp']),
       note: map['note'],
-      drinkType: map['drinkType'] ?? 'water',
+      drinkType: map['drinkType'] ?? 'Water',
     );
   }
 }

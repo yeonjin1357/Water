@@ -22,7 +22,7 @@ class WaterIntakeProvider extends ChangeNotifier {
   int get todayTotal => _todayTotal;
   double get progress => _todayTotal / _userSettings.dailyGoal;
 
-  Future<void> addWaterIntake(int amount, {String? note, String drinkType = 'water'}) async {
+  Future<void> addWaterIntake(int amount, {String? note, String drinkType = 'Water'}) async {
     final intake = WaterIntake(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       amount: amount,
@@ -47,17 +47,25 @@ class WaterIntakeProvider extends ChangeNotifier {
   }
 
   Future<void> removeIntake(String id) async {
-    final intake = _todayIntakes.firstWhere((i) => i.id == id);
-    await _dbHelper.deleteIntake(id);
-    _todayTotal -= intake.amount;
-    _todayIntakes.removeWhere((i) => i.id == id);
+    // Try to find the intake in today's list first
+    final todayIntakeIndex = _todayIntakes.indexWhere((i) => i.id == id);
     
-    // Update persistent notification if enabled
-    if (_userSettings.persistentNotificationEnabled) {
-      await _notificationService.showPersistentNotification(
-        currentAmount: _todayTotal,
-        dailyGoal: _userSettings.dailyGoal,
-      );
+    // Delete from database regardless of whether it's today's intake
+    await _dbHelper.deleteIntake(id);
+    
+    // Only update today's totals if it's a today intake
+    if (todayIntakeIndex != -1) {
+      final intake = _todayIntakes[todayIntakeIndex];
+      _todayTotal -= intake.amount;
+      _todayIntakes.removeAt(todayIntakeIndex);
+      
+      // Update persistent notification if enabled
+      if (_userSettings.persistentNotificationEnabled) {
+        await _notificationService.showPersistentNotification(
+          currentAmount: _todayTotal,
+          dailyGoal: _userSettings.dailyGoal,
+        );
+      }
     }
     
     notifyListeners();
@@ -90,6 +98,7 @@ class WaterIntakeProvider extends ChangeNotifier {
 
   Future<void> updateSettings(UserSettings newSettings) async {
     final oldPersistentEnabled = _userSettings.persistentNotificationEnabled;
+    final oldReminders = _userSettings.waterReminders;
     _userSettings = newSettings;
     await _prefsService.saveSettings(newSettings);
     AppLocalizations.setLanguage(newSettings.language);
@@ -110,6 +119,14 @@ class WaterIntakeProvider extends ChangeNotifier {
         currentAmount: _todayTotal,
         dailyGoal: newSettings.dailyGoal,
       );
+    }
+    
+    // Re-schedule water reminder notifications if they changed
+    // Note: This is already handled in notification_settings_dialog.dart when saving
+    // but we should ensure it's done here too for consistency
+    if (newSettings.waterReminders != oldReminders) {
+      debugPrint('WaterIntakeProvider: Water reminders changed, rescheduling...');
+      await _notificationService.scheduleWaterReminderNotifications(newSettings.waterReminders);
     }
     
     notifyListeners();
@@ -143,6 +160,12 @@ class WaterIntakeProvider extends ChangeNotifier {
     AppLocalizations.setLanguage(_userSettings.language);
     await loadTodayData();
     _setupMidnightTimer();
+    
+    // Re-schedule water reminder notifications on app start
+    if (_userSettings.waterReminders.isNotEmpty) {
+      debugPrint('WaterIntakeProvider: Rescheduling ${_userSettings.waterReminders.length} water reminders on app start...');
+      await _notificationService.scheduleWaterReminderNotifications(_userSettings.waterReminders);
+    }
   }
   
   void _setupMidnightTimer() {
@@ -202,5 +225,64 @@ class WaterIntakeProvider extends ChangeNotifier {
 
   Future<double> getCompletionRate(DateTime date) async {
     return await _dbHelper.getCompletionRate(date, _userSettings.dailyGoal);
+  }
+
+  // Custom drink methods
+  Future<void> addCustomDrink(CustomDrink drink) async {
+    final updatedDrinks = [..._userSettings.customDrinks, drink];
+    _userSettings = UserSettings(
+      dailyGoal: _userSettings.dailyGoal,
+      reminderInterval: _userSettings.reminderInterval,
+      reminderStartTime: _userSettings.reminderStartTime,
+      reminderEndTime: _userSettings.reminderEndTime,
+      defaultAmount: _userSettings.defaultAmount,
+      isDarkMode: _userSettings.isDarkMode,
+      language: _userSettings.language,
+      notificationsEnabled: _userSettings.notificationsEnabled,
+      persistentNotificationEnabled: _userSettings.persistentNotificationEnabled,
+      customDrinks: updatedDrinks,
+    );
+    await _prefsService.saveSettings(_userSettings);
+    notifyListeners();
+  }
+
+  Future<void> removeCustomDrink(String drinkId) async {
+    final updatedDrinks = _userSettings.customDrinks
+        .where((drink) => drink.id != drinkId)
+        .toList();
+    _userSettings = UserSettings(
+      dailyGoal: _userSettings.dailyGoal,
+      reminderInterval: _userSettings.reminderInterval,
+      reminderStartTime: _userSettings.reminderStartTime,
+      reminderEndTime: _userSettings.reminderEndTime,
+      defaultAmount: _userSettings.defaultAmount,
+      isDarkMode: _userSettings.isDarkMode,
+      language: _userSettings.language,
+      notificationsEnabled: _userSettings.notificationsEnabled,
+      persistentNotificationEnabled: _userSettings.persistentNotificationEnabled,
+      customDrinks: updatedDrinks,
+    );
+    await _prefsService.saveSettings(_userSettings);
+    notifyListeners();
+  }
+
+  Future<void> updateCustomDrink(CustomDrink drink) async {
+    final updatedDrinks = _userSettings.customDrinks.map((d) {
+      return d.id == drink.id ? drink : d;
+    }).toList();
+    _userSettings = UserSettings(
+      dailyGoal: _userSettings.dailyGoal,
+      reminderInterval: _userSettings.reminderInterval,
+      reminderStartTime: _userSettings.reminderStartTime,
+      reminderEndTime: _userSettings.reminderEndTime,
+      defaultAmount: _userSettings.defaultAmount,
+      isDarkMode: _userSettings.isDarkMode,
+      language: _userSettings.language,
+      notificationsEnabled: _userSettings.notificationsEnabled,
+      persistentNotificationEnabled: _userSettings.persistentNotificationEnabled,
+      customDrinks: updatedDrinks,
+    );
+    await _prefsService.saveSettings(_userSettings);
+    notifyListeners();
   }
 }

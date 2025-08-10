@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'screens/main_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/stats_screen.dart';
@@ -122,7 +123,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               bottomNavigationBar: BottomNavigationBar(
                 items: <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.water_drop),
+                    icon: const Icon(Symbols.water_full),
                     label: AppLocalizations.get('home'),
                   ),
                   BottomNavigationBarItem(

@@ -62,6 +62,22 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
     super.dispose();
   }
 
+  String _getNotificationSubtitle(WaterIntakeProvider provider) {
+    final reminders = provider.userSettings.waterReminders;
+    if (reminders.isEmpty) {
+      return AppLocalizations.currentLanguage == 'ko' ? '꺼짐' : 'Off';
+    }
+    
+    final enabledCount = reminders.where((r) => r.isEnabled).length;
+    if (enabledCount == 0) {
+      return AppLocalizations.currentLanguage == 'ko' ? '모든 알림 비활성화' : 'All disabled';
+    }
+    
+    return AppLocalizations.currentLanguage == 'ko' 
+        ? '$enabledCount개 알림 활성화' 
+        : '$enabledCount notification${enabledCount > 1 ? 's' : ''} enabled';
+  }
+  
   void _showLanguageDialog(BuildContext context, WaterIntakeProvider provider) {
     showDialog(
       context: context,
@@ -191,6 +207,8 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
       language: language,
       notificationsEnabled: provider.userSettings.notificationsEnabled,
       persistentNotificationEnabled: provider.userSettings.persistentNotificationEnabled,
+      customDrinks: provider.userSettings.customDrinks,
+      waterReminders: provider.userSettings.waterReminders,
     );
     provider.updateSettings(newSettings);
     Navigator.of(context).pop();
@@ -319,6 +337,8 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                                 language: provider.userSettings.language,
                                 notificationsEnabled: provider.userSettings.notificationsEnabled,
                                 persistentNotificationEnabled: provider.userSettings.persistentNotificationEnabled,
+                                customDrinks: provider.userSettings.customDrinks,
+                                waterReminders: provider.userSettings.waterReminders,
                               );
                               provider.updateSettings(newSettings);
                               Navigator.of(context).pop();
@@ -403,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                       icon: Icons.notifications_outlined,
                       iconGradient: [const Color(0xFF66BB6A), const Color(0xFF4CAF50)],
                       title: AppLocalizations.get('notifications'),
-                      subtitle: provider.userSettings.notificationsEnabled ? 'On' : 'Off',
+                      subtitle: _getNotificationSubtitle(provider),
                       onTap: () {
                         showDialog(
                           context: context,
@@ -643,6 +663,8 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                       language: provider.userSettings.language,
                       notificationsEnabled: provider.userSettings.notificationsEnabled,
                       persistentNotificationEnabled: provider.userSettings.persistentNotificationEnabled,
+                      customDrinks: provider.userSettings.customDrinks,
+                      waterReminders: provider.userSettings.waterReminders,
                     );
                     provider.updateSettings(newSettings);
                   },
@@ -716,9 +738,9 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '상태바 알림',
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.get('statusBarNotifications'),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -726,8 +748,8 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                     const SizedBox(height: 4),
                     Text(
                       provider.userSettings.persistentNotificationEnabled 
-                          ? '오늘의 물 섭취량 표시 중' 
-                          : '꺼짐',
+                          ? AppLocalizations.get('statusBarNotificationsOn')
+                          : AppLocalizations.get('statusBarNotificationsOff'),
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -751,6 +773,8 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                       language: provider.userSettings.language,
                       notificationsEnabled: provider.userSettings.notificationsEnabled,
                       persistentNotificationEnabled: value,
+                      customDrinks: provider.userSettings.customDrinks,
+                      waterReminders: provider.userSettings.waterReminders,
                     );
                     provider.updateSettings(newSettings);
                   },
