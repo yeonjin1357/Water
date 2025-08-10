@@ -125,7 +125,6 @@ class WaterIntakeProvider extends ChangeNotifier {
     // Note: This is already handled in notification_settings_dialog.dart when saving
     // but we should ensure it's done here too for consistency
     if (newSettings.waterReminders != oldReminders) {
-      debugPrint('WaterIntakeProvider: Water reminders changed, rescheduling...');
       await _notificationService.scheduleWaterReminderNotifications(newSettings.waterReminders);
     }
     
@@ -163,7 +162,6 @@ class WaterIntakeProvider extends ChangeNotifier {
     
     // Re-schedule water reminder notifications on app start
     if (_userSettings.waterReminders.isNotEmpty) {
-      debugPrint('WaterIntakeProvider: Rescheduling ${_userSettings.waterReminders.length} water reminders on app start...');
       await _notificationService.scheduleWaterReminderNotifications(_userSettings.waterReminders);
     }
   }

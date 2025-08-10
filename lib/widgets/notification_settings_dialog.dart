@@ -323,7 +323,15 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
               ],
             ),
           ),
-          // Test notification buttons (for debugging)
+          // 알림 테스트 메뉴 (디버깅용 - 개발 시 주석 해제하여 사용)
+          // PopupMenuButton을 통해 다양한 알림 테스트 가능:
+          // - 즉시 알림 테스트
+          // - 10초 후 예약 알림 테스트  
+          // - 1분 후 예약 알림 테스트
+          // - 주기적 알림 테스트
+          // - 모든 알림 제거
+          // - 알림 권한 확인
+          /*
           PopupMenuButton<String>(
             onSelected: (value) async {
               final notificationService = NotificationService();
@@ -465,6 +473,7 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
               size: 20,
             ),
           ),
+          */
           IconButton(
             onPressed: _addReminder,
             icon: Container(
