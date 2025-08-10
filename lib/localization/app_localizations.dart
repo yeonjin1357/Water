@@ -2,7 +2,7 @@ class AppLocalizations {
   static final Map<String, Map<String, String>> _localizedValues = {
     'ko': {
       // Common
-      'appTitle': '물 마시기 리마인더',
+      'appTitle': '물방울',
       'ml': 'ml',
       'liter': 'L',
       'cancel': '취소',
@@ -147,7 +147,7 @@ class AppLocalizations {
     },
     'en': {
       // Common
-      'appTitle': 'Water Reminder',
+      'appTitle': 'Droplet',
       'ml': 'ml',
       'liter': 'L',
       'cancel': 'Cancel',
