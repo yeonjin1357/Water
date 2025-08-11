@@ -6,7 +6,7 @@ import '../models/water_intake.dart';
 import '../models/user_settings.dart';
 import '../localization/app_localizations.dart';
 import 'history_bottom_sheet.dart';
-import 'edit_intake_dialog.dart';
+import 'drink_settings_dialog.dart';
 
 class HistorySection extends StatefulWidget {
   const HistorySection({super.key});
@@ -278,7 +278,7 @@ class _HistorySectionState extends State<HistorySection>
   ) {
     final time =
         '${intake.timestamp.hour.toString().padLeft(2, '0')}:${intake.timestamp.minute.toString().padLeft(2, '0')}';
-    final drinkType = intake.note ?? 'Water';
+    final drinkType = intake.drinkType;
 
     Map<String, dynamic> drinkStyle = _getDrinkStyle(drinkType);
 
@@ -361,14 +361,15 @@ class _HistorySectionState extends State<HistorySection>
             onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => EditIntakeDialog(
-                  intake: intake,
+                builder: (context) => DrinkSettingsDialog(
+                  currentAmount: intake.amount,
+                  currentDrinkType: intake.drinkType,
                   onConfirm: (amount, drinkType) async {
                     final updatedIntake = WaterIntake(
                       id: intake.id,
                       amount: amount,
                       timestamp: intake.timestamp,
-                      note: drinkType,
+                      drinkType: drinkType,
                     );
                     await provider.updateIntake(updatedIntake);
                   },

@@ -38,7 +38,7 @@ class _EditIntakeDialogState extends State<EditIntakeDialog> {
   @override
   void initState() {
     super.initState();
-    selectedDrink = widget.intake.note ?? 'Water';
+    selectedDrink = widget.intake.drinkType;
     selectedAmount = widget.intake.amount;
     customAmountController = TextEditingController(
       text: selectedAmount.toString(),

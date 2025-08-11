@@ -24,6 +24,8 @@ class _StatsScreenState extends State<StatsScreen> {
   Map<String, int> _yearlyData = {};
   Map<String, int> _drinkTypeData = {};
   int _streakDays = 0;
+  int? _selectedCompletionIndex;
+  int? _selectedHydrateIndex;
 
   @override
   void initState() {
@@ -572,29 +574,42 @@ class _StatsScreenState extends State<StatsScreen> {
       }
     }
     
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: 100,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final percentage = rod.toY.toInt();
-              return BarTooltipItem(
-                '$percentage%',
-                TextStyle(
-                  color: Theme.of(context).colorScheme.surface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              );
+    return GestureDetector(
+      onTapDown: (details) {
+        setState(() {
+          _selectedCompletionIndex = null;
+        });
+      },
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: 100,
+          barTouchData: BarTouchData(
+            enabled: true,
+            handleBuiltInTouches: false,
+            touchCallback: (FlTouchEvent event, barTouchResponse) {
+              if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
+                setState(() {
+                  _selectedCompletionIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              }
             },
-            tooltipRoundedRadius: 12,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipMargin: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final percentage = rod.toY.toInt();
+                return BarTooltipItem(
+                  '$percentage%',
+                  TextStyle(
+                    color: Theme.of(context).colorScheme.surface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                );
+              },
+            ),
           ),
-        ),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -657,6 +672,7 @@ class _StatsScreenState extends State<StatsScreen> {
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         barGroups: barGroups,
+        ),
       ),
     );
   }
@@ -708,21 +724,35 @@ class _StatsScreenState extends State<StatsScreen> {
       spots = [const FlSpot(0, 0)];
     }
     
-    return LineChart(
-      LineChartData(
-        maxY: 100,
-        minY: 0,
-        clipData: const FlClipData.all(),
-        gridData: const FlGridData(show: false),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchTooltipData: LineTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((LineBarSpot touchedSpot) {
-                final percentage = touchedSpot.y.toInt();
-                return LineTooltipItem(
+    return GestureDetector(
+      onTapDown: (details) {
+        setState(() {
+          _selectedCompletionIndex = null;
+        });
+      },
+      child: LineChart(
+        LineChartData(
+          maxY: 100,
+          minY: 0,
+          clipData: const FlClipData.all(),
+          gridData: const FlGridData(show: false),
+          lineTouchData: LineTouchData(
+            enabled: true,
+            handleBuiltInTouches: false,
+            touchCallback: (FlTouchEvent event, lineTouchResponse) {
+              if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+                setState(() {
+                  _selectedCompletionIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                });
+              }
+            },
+            touchTooltipData: LineTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipMargin: 8,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((LineBarSpot touchedSpot) {
+                  final percentage = touchedSpot.y.toInt();
+                  return LineTooltipItem(
                   '$percentage%',
                   TextStyle(
                     color: Theme.of(context).colorScheme.surface,
@@ -732,7 +762,6 @@ class _StatsScreenState extends State<StatsScreen> {
                 );
               }).toList();
             },
-            tooltipRoundedRadius: 12,
           ),
         ),
         titlesData: FlTitlesData(
@@ -829,6 +858,7 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -937,29 +967,42 @@ class _StatsScreenState extends State<StatsScreen> {
     double interval = chartMaxY / 5; // Show 5 labels
     interval = (interval / 100).ceilToDouble() * 100; // Round to nearest 100
     
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: chartMaxY,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final amount = rod.toY.toInt();
-              return BarTooltipItem(
-                '${amount}ml',
-                TextStyle(
-                  color: Theme.of(context).colorScheme.surface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              );
+    return GestureDetector(
+      onTapDown: (details) {
+        setState(() {
+          _selectedHydrateIndex = null;
+        });
+      },
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: chartMaxY,
+          barTouchData: BarTouchData(
+            enabled: true,
+            handleBuiltInTouches: false,
+            touchCallback: (FlTouchEvent event, barTouchResponse) {
+              if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
+                setState(() {
+                  _selectedHydrateIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              }
             },
-            tooltipRoundedRadius: 12,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipMargin: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final amount = rod.toY.toInt();
+                return BarTooltipItem(
+                  '${amount}ml',
+                  TextStyle(
+                    color: Theme.of(context).colorScheme.surface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                );
+              },
+            ),
           ),
-        ),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
@@ -1028,6 +1071,7 @@ class _StatsScreenState extends State<StatsScreen> {
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         barGroups: barGroups,
+        ),
       ),
     );
   }
@@ -1089,31 +1133,44 @@ class _StatsScreenState extends State<StatsScreen> {
     double interval = chartMaxY / 5; // Show 5 labels
     interval = (interval / 100).ceilToDouble() * 100; // Round to nearest 100
     
-    return LineChart(
-      LineChartData(
-        maxY: chartMaxY,
-        minY: 0,
-        clipData: const FlClipData.all(),
-        gridData: const FlGridData(show: false),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchTooltipData: LineTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((LineBarSpot touchedSpot) {
-                final amount = touchedSpot.y.toInt();
-                return LineTooltipItem(
-                  '${amount}ml',
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.surface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                );
-              }).toList();
+    return GestureDetector(
+      onTapDown: (details) {
+        setState(() {
+          _selectedHydrateIndex = null;
+        });
+      },
+      child: LineChart(
+        LineChartData(
+          maxY: chartMaxY,
+          minY: 0,
+          clipData: const FlClipData.all(),
+          gridData: const FlGridData(show: false),
+          lineTouchData: LineTouchData(
+            enabled: true,
+            handleBuiltInTouches: false,
+            touchCallback: (FlTouchEvent event, lineTouchResponse) {
+              if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+                setState(() {
+                  _selectedHydrateIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                });
+              }
             },
-            tooltipRoundedRadius: 12,
+            touchTooltipData: LineTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipMargin: 8,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((LineBarSpot touchedSpot) {
+                  final amount = touchedSpot.y.toInt();
+                  return LineTooltipItem(
+                    '${amount}ml',
+                    TextStyle(
+                      color: Theme.of(context).colorScheme.surface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  );
+                }).toList();
+              },
           ),
         ),
         titlesData: FlTitlesData(
@@ -1216,6 +1273,7 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

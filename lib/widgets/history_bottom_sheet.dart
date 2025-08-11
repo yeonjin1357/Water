@@ -4,7 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../providers/water_intake_provider.dart';
 import '../models/water_intake.dart';
 import '../models/user_settings.dart';
-import 'edit_intake_dialog.dart';
+import 'drink_settings_dialog.dart';
 import '../localization/app_localizations.dart';
 
 class HistoryBottomSheet extends StatefulWidget {
@@ -16,11 +16,23 @@ class HistoryBottomSheet extends StatefulWidget {
 
 class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
   late Future<List<WaterIntake>> _allIntakesFuture;
+  DateTime? _selectedDate;
+  bool _isDateFilterActive = false;
 
   @override
   void initState() {
     super.initState();
-    _allIntakesFuture = context.read<WaterIntakeProvider>().getAllIntakes();
+    _loadIntakes();
+  }
+
+  void _loadIntakes() {
+    final provider = context.read<WaterIntakeProvider>();
+    if (_isDateFilterActive && _selectedDate != null) {
+      // Load only selected date's data
+      _allIntakesFuture = provider.getIntakesByDate(_selectedDate!);
+    } else {
+      _allIntakesFuture = provider.getAllIntakes();
+    }
   }
 
   @override
@@ -53,20 +65,76 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
               // Header
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Text(
-                      AppLocalizations.get('history'),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          AppLocalizations.get('history'),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.calendar_month,
+                                color: _isDateFilterActive 
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              onPressed: _selectDate,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (_isDateFilterActive && _selectedDate != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatDate(_selectedDate!),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            InkWell(
+                              onTap: _clearDateFilter,
+                              child: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
                   ],
                 ),
               ),
@@ -242,7 +310,7 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
   ) {
     final time =
         '${intake.timestamp.hour.toString().padLeft(2, '0')}:${intake.timestamp.minute.toString().padLeft(2, '0')}';
-    final drinkType = intake.note ?? 'Water';
+    final drinkType = intake.drinkType;
 
     IconData drinkIcon = Symbols.water_full;
     Color drinkColor = Colors.blue[400]!;
@@ -373,18 +441,19 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
               if (value == 'edit') {
                 showDialog(
                   context: context,
-                  builder: (context) => EditIntakeDialog(
-                    intake: intake,
+                  builder: (context) => DrinkSettingsDialog(
+                    currentAmount: intake.amount,
+                    currentDrinkType: intake.drinkType,
                     onConfirm: (amount, drinkType) async {
                       final updatedIntake = WaterIntake(
                         id: intake.id,
                         amount: amount,
                         timestamp: intake.timestamp,
-                        note: drinkType,
+                        drinkType: drinkType,
                       );
                       await provider.updateIntake(updatedIntake);
                       setState(() {
-                        _allIntakesFuture = provider.getAllIntakes();
+                        _loadIntakes();
                       });
                     },
                   ),
@@ -406,7 +475,7 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
                           await provider.removeIntake(intake.id);
                           if (mounted) {
                             setState(() {
-                              _allIntakesFuture = provider.getAllIntakes();
+                              _loadIntakes();
                             });
                           }
                         },
@@ -424,5 +493,41 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
         ],
       ),
     );
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: const Color(0xFF42A5F5),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _isDateFilterActive = true;
+        _loadIntakes();
+      });
+    }
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      _selectedDate = null;
+      _isDateFilterActive = false;
+      _loadIntakes();
+    });
   }
 }

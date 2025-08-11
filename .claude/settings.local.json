@@ -22,7 +22,9 @@
       "WebFetch(domain:developer.android.com)",
       "Bash(dir C:yeonjinprojectassetsicons)",
       "Bash(dir assetsicons)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:stackoverflow.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

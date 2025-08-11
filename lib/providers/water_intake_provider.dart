@@ -201,6 +201,14 @@ class WaterIntakeProvider extends ChangeNotifier {
     return await _dbHelper.getAllIntakes();
   }
 
+  Future<List<WaterIntake>> getIntakesBetween(DateTime start, DateTime end) async {
+    return await _dbHelper.getIntakesBetween(start, end);
+  }
+
+  Future<List<WaterIntake>> getIntakesByDate(DateTime date) async {
+    return await _dbHelper.getIntakesByDate(date);
+  }
+
   Future<Map<String, int>> getWeeklyStats() async {
     return await _dbHelper.getWeeklyStats();
   }
