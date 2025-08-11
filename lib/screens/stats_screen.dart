@@ -310,9 +310,15 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _buildDrinkCompletionCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCompletionIndex = null;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -365,19 +371,29 @@ class _StatsScreenState extends State<StatsScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: _isBarChart ? _buildBarChart() : _buildCompletionLineChart(),
+          GestureDetector(
+            onTap: () {}, // Prevent parent GestureDetector from handling taps on chart
+            child: SizedBox(
+              height: 200,
+              child: _isBarChart ? _buildBarChart() : _buildCompletionLineChart(),
+            ),
           ),
         ],
+      ),
       ),
     );
   }
 
   Widget _buildHydrateCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedHydrateIndex = null;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -430,11 +446,15 @@ class _StatsScreenState extends State<StatsScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: _isHydrateBarChart ? _buildHydrateBarChart() : _buildHydrateLineChart(),
+          GestureDetector(
+            onTap: () {}, // Prevent parent GestureDetector from handling taps on chart
+            child: SizedBox(
+              height: 200,
+              child: _isHydrateBarChart ? _buildHydrateBarChart() : _buildHydrateLineChart(),
+            ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -507,6 +527,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedCompletionIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: percentage.toDouble(),
@@ -532,6 +553,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedCompletionIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: percentage.toDouble(),
@@ -557,6 +579,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedCompletionIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: percentage.toDouble(),
@@ -574,13 +597,7 @@ class _StatsScreenState extends State<StatsScreen> {
       }
     }
     
-    return GestureDetector(
-      onTapDown: (details) {
-        setState(() {
-          _selectedCompletionIndex = null;
-        });
-      },
-      child: BarChart(
+    return BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           maxY: 100,
@@ -590,19 +607,24 @@ class _StatsScreenState extends State<StatsScreen> {
             touchCallback: (FlTouchEvent event, barTouchResponse) {
               if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
                 setState(() {
-                  _selectedCompletionIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                  if (_selectedCompletionIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
+                    _selectedCompletionIndex = null; // Tap again to hide
+                  } else {
+                    _selectedCompletionIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                  }
                 });
               }
             },
             touchTooltipData: BarTouchTooltipData(
               tooltipPadding: const EdgeInsets.all(8),
               tooltipMargin: 8,
+              getTooltipColor: (group) => Colors.black87,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final percentage = rod.toY.toInt();
                 return BarTooltipItem(
                   '$percentage%',
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.surface,
+                  const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -672,7 +694,6 @@ class _StatsScreenState extends State<StatsScreen> {
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         barGroups: barGroups,
-        ),
       ),
     );
   }
@@ -724,13 +745,7 @@ class _StatsScreenState extends State<StatsScreen> {
       spots = [const FlSpot(0, 0)];
     }
     
-    return GestureDetector(
-      onTapDown: (details) {
-        setState(() {
-          _selectedCompletionIndex = null;
-        });
-      },
-      child: LineChart(
+    return LineChart(
         LineChartData(
           maxY: 100,
           minY: 0,
@@ -742,20 +757,26 @@ class _StatsScreenState extends State<StatsScreen> {
             touchCallback: (FlTouchEvent event, lineTouchResponse) {
               if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
                 setState(() {
-                  _selectedCompletionIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                  final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                  if (_selectedCompletionIndex == spotIndex) {
+                    _selectedCompletionIndex = null; // Tap again to hide
+                  } else {
+                    _selectedCompletionIndex = spotIndex;
+                  }
                 });
               }
             },
             touchTooltipData: LineTouchTooltipData(
               tooltipPadding: const EdgeInsets.all(8),
               tooltipMargin: 8,
+              getTooltipColor: (touchedSpot) => Colors.black87,
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((LineBarSpot touchedSpot) {
                   final percentage = touchedSpot.y.toInt();
                   return LineTooltipItem(
                   '$percentage%',
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.surface,
+                  const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -824,6 +845,22 @@ class _StatsScreenState extends State<StatsScreen> {
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
+        showingTooltipIndicators: _selectedCompletionIndex != null && spots.length > _selectedCompletionIndex!
+            ? [ShowingTooltipIndicators([
+                LineBarSpot(
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4FC3F7), Color(0xFF29B6F6)],
+                    ),
+                  ),
+                  0,
+                  spots[_selectedCompletionIndex!],
+                ),
+              ])]
+            : [],
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -858,7 +895,6 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
         ],
-        ),
       ),
     );
   }
@@ -889,6 +925,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedHydrateIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: amount.toDouble(),
@@ -915,6 +952,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedHydrateIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: amount.toDouble(),
@@ -941,6 +979,7 @@ class _StatsScreenState extends State<StatsScreen> {
         barGroups.add(
           BarChartGroupData(
             x: i,
+            showingTooltipIndicators: _selectedHydrateIndex == i ? [0] : [],
             barRods: [
               BarChartRodData(
                 toY: amount.toDouble(),
@@ -967,13 +1006,7 @@ class _StatsScreenState extends State<StatsScreen> {
     double interval = chartMaxY / 5; // Show 5 labels
     interval = (interval / 100).ceilToDouble() * 100; // Round to nearest 100
     
-    return GestureDetector(
-      onTapDown: (details) {
-        setState(() {
-          _selectedHydrateIndex = null;
-        });
-      },
-      child: BarChart(
+    return BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           maxY: chartMaxY,
@@ -983,19 +1016,24 @@ class _StatsScreenState extends State<StatsScreen> {
             touchCallback: (FlTouchEvent event, barTouchResponse) {
               if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
                 setState(() {
-                  _selectedHydrateIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                  if (_selectedHydrateIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
+                    _selectedHydrateIndex = null; // Tap again to hide
+                  } else {
+                    _selectedHydrateIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                  }
                 });
               }
             },
             touchTooltipData: BarTouchTooltipData(
               tooltipPadding: const EdgeInsets.all(8),
               tooltipMargin: 8,
+              getTooltipColor: (group) => Colors.black87,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final amount = rod.toY.toInt();
                 return BarTooltipItem(
                   '${amount}ml',
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.surface,
+                  const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -1071,7 +1109,6 @@ class _StatsScreenState extends State<StatsScreen> {
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         barGroups: barGroups,
-        ),
       ),
     );
   }
@@ -1133,13 +1170,7 @@ class _StatsScreenState extends State<StatsScreen> {
     double interval = chartMaxY / 5; // Show 5 labels
     interval = (interval / 100).ceilToDouble() * 100; // Round to nearest 100
     
-    return GestureDetector(
-      onTapDown: (details) {
-        setState(() {
-          _selectedHydrateIndex = null;
-        });
-      },
-      child: LineChart(
+    return LineChart(
         LineChartData(
           maxY: chartMaxY,
           minY: 0,
@@ -1151,20 +1182,26 @@ class _StatsScreenState extends State<StatsScreen> {
             touchCallback: (FlTouchEvent event, lineTouchResponse) {
               if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
                 setState(() {
-                  _selectedHydrateIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                  final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                  if (_selectedHydrateIndex == spotIndex) {
+                    _selectedHydrateIndex = null; // Tap again to hide
+                  } else {
+                    _selectedHydrateIndex = spotIndex;
+                  }
                 });
               }
             },
             touchTooltipData: LineTouchTooltipData(
               tooltipPadding: const EdgeInsets.all(8),
               tooltipMargin: 8,
+              getTooltipColor: (touchedSpot) => Colors.black87,
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((LineBarSpot touchedSpot) {
                   final amount = touchedSpot.y.toInt();
                   return LineTooltipItem(
                     '${amount}ml',
-                    TextStyle(
-                      color: Theme.of(context).colorScheme.surface,
+                    const TextStyle(
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -1239,6 +1276,22 @@ class _StatsScreenState extends State<StatsScreen> {
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
+        showingTooltipIndicators: _selectedHydrateIndex != null && spots.length > _selectedHydrateIndex!
+            ? [ShowingTooltipIndicators([
+                LineBarSpot(
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4FC3F7), Color(0xFF29B6F6)],
+                    ),
+                  ),
+                  0,
+                  spots[_selectedHydrateIndex!],
+                ),
+              ])]
+            : [],
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -1273,7 +1326,6 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
         ],
-        ),
       ),
     );
   }

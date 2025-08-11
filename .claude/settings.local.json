@@ -24,7 +24,8 @@
       "Bash(dir assetsicons)",
       "Bash(dir:*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:stackoverflow.com)"
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(dart analyze:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
