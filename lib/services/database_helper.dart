@@ -190,16 +190,143 @@ class DatabaseHelper {
     return stats;
   }
 
-  Future<int> getStreakDays(int dailyGoal) async {
-    int streak = 0;
-    DateTime currentDate = DateTime.now();
+  // 최적화된 배치 쿼리 메서드들
+  Future<Map<String, int>> getDailyTotalsBetween(DateTime start, DateTime end) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+      SELECT 
+        DATE(timestamp) as date,
+        SUM(amount) as total
+      FROM water_intakes
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY DATE(timestamp)
+      ORDER BY date
+    ''', [start.toIso8601String(), end.toIso8601String()]);
     
-    while (true) {
-      final total = await getTotalForDate(currentDate);
-      if (total >= dailyGoal) {
-        streak++;
-        currentDate = currentDate.subtract(const Duration(days: 1));
-      } else {
+    final Map<String, int> dailyTotals = {};
+    for (var row in result) {
+      dailyTotals[row['date'] as String] = row['total'] as int;
+    }
+    
+    // 범위 내 모든 날짜에 대해 값 채우기 (없는 날은 0)
+    DateTime currentDate = start;
+    while (currentDate.isBefore(end)) {
+      final dateKey = currentDate.toIso8601String().split('T')[0];
+      dailyTotals.putIfAbsent(dateKey, () => 0);
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+    
+    return dailyTotals;
+  }
+
+  // 최적화된 주간 통계
+  Future<Map<String, int>> getWeeklyStatsOptimized(DateTime weekStart) async {
+    final weekEnd = weekStart.add(const Duration(days: 7));
+    return await getDailyTotalsBetween(weekStart, weekEnd);
+  }
+
+  // 최적화된 월간 통계 (주 단위 평균)
+  Future<Map<String, int>> getMonthlyStatsOptimized(int year, int month) async {
+    final firstDay = DateTime(year, month, 1);
+    final lastDay = DateTime(year, month + 1, 0);
+    final endDay = lastDay.add(const Duration(days: 1));
+    
+    final dailyTotals = await getDailyTotalsBetween(firstDay, endDay);
+    
+    // 주 단위로 그룹화
+    final Map<String, int> weeklyStats = {};
+    for (int week = 0; week < 5; week++) {
+      int weekTotal = 0;
+      int dayCount = 0;
+      
+      for (int day = week * 7 + 1; day <= lastDay.day && day <= (week + 1) * 7; day++) {
+        final date = DateTime(year, month, day);
+        final dateKey = date.toIso8601String().split('T')[0];
+        final dayTotal = dailyTotals[dateKey] ?? 0;
+        weekTotal += dayTotal;
+        if (dayTotal > 0) dayCount++;
+      }
+      
+      final weekKey = 'week_$week';
+      weeklyStats[weekKey] = dayCount > 0 ? (weekTotal / dayCount).round() : 0;
+    }
+    
+    return weeklyStats;
+  }
+
+  // 최적화된 연간 통계 (월 단위 평균)
+  Future<Map<String, int>> getYearlyStatsOptimized(int year) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+      SELECT 
+        strftime('%m', timestamp) as month,
+        SUM(amount) as total,
+        COUNT(DISTINCT DATE(timestamp)) as days
+      FROM water_intakes
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY strftime('%m', timestamp)
+      ORDER BY month
+    ''', [
+      DateTime(year, 1, 1).toIso8601String(),
+      DateTime(year + 1, 1, 1).toIso8601String()
+    ]);
+    
+    final Map<String, int> monthlyStats = {};
+    
+    for (int month = 1; month <= 12; month++) {
+      final monthStr = month.toString().padLeft(2, '0');
+      final monthData = result.firstWhere(
+        (row) => row['month'] == monthStr,
+        orElse: () => {'total': 0, 'days': 0},
+      );
+      
+      final total = monthData['total'] as int? ?? 0;
+      final days = monthData['days'] as int? ?? 0;
+      
+      final monthKey = 'month_${month - 1}';
+      monthlyStats[monthKey] = days > 0 ? (total / days).round() : 0;
+    }
+    
+    return monthlyStats;
+  }
+
+  Future<int> getStreakDays(int dailyGoal) async {
+    final db = await database;
+    final today = DateTime.now();
+    
+    // 최근 365일간의 데이터를 한 번에 가져오기 (충분한 범위)
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+      SELECT 
+        DATE(timestamp) as date,
+        SUM(amount) as total
+      FROM water_intakes
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY DATE(timestamp)
+      ORDER BY date DESC
+    ''', [
+      today.subtract(const Duration(days: 365)).toIso8601String(),
+      today.add(const Duration(days: 1)).toIso8601String()
+    ]);
+    
+    int streak = 0;
+    DateTime checkDate = today;
+    
+    for (var row in result) {
+      final dateStr = row['date'] as String;
+      final checkDateStr = checkDate.toIso8601String().split('T')[0];
+      
+      // 날짜가 연속적인지 확인
+      if (dateStr == checkDateStr) {
+        final total = row['total'] as int;
+        if (total >= dailyGoal) {
+          streak++;
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        } else {
+          // 목표량 미달성 시 연속 기록 중단
+          break;
+        }
+      } else if (dateStr.compareTo(checkDateStr) < 0) {
+        // 데이터가 없는 날 = 목표 미달성으로 간주
         break;
       }
     }

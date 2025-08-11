@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/water_intake_provider.dart';
-import '../models/water_intake.dart';
 import '../services/database_helper.dart';
 import '../localization/app_localizations.dart';
 
@@ -35,88 +34,67 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Future<void> _loadData() async {
     final provider = context.read<WaterIntakeProvider>();
+    final dbHelper = DatabaseHelper();
     
-    if (_selectedTabIndex == 0) {
-      // Weekly view - get data for the selected week
-      final weekday = _selectedDate.weekday;
-      final startOfWeek = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day - (weekday - 1),
-      );
-      _weeklyData = {};
-      for (int i = 0; i < 7; i++) {
-        final date = startOfWeek.add(Duration(days: i));
-        final dateKey = date.toString().split(' ')[0];
-        final total = await DatabaseHelper().getTotalForDate(date);
-        _weeklyData[dateKey] = total;
-      }
-      
-      final endOfWeek = DateTime(
-        startOfWeek.year,
-        startOfWeek.month,
-        startOfWeek.day + 6,
-        23, 59, 59,
-      );
-      _drinkTypeData = await provider.getDrinkTypeStats(startOfWeek, endOfWeek);
-    } else if (_selectedTabIndex == 1) {
-      // Monthly view - group by weeks
-      _monthlyData = {};
-      final year = _selectedDate.year;
-      final month = _selectedDate.month;
-      final firstDay = DateTime(year, month, 1);
-      final lastDay = DateTime(year, month + 1, 0);
-      
-      // Calculate week data
-      for (int week = 0; week < 5; week++) {
-        int weekTotal = 0;
-        int dayCount = 0;
+    try {
+      if (_selectedTabIndex == 0) {
+        // Weekly view - 최적화된 배치 쿼리 사용
+        final weekday = _selectedDate.weekday;
+        final startOfWeek = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day - (weekday - 1),
+        );
         
-        for (int day = week * 7 + 1; day <= lastDay.day && day <= (week + 1) * 7; day++) {
-          final date = DateTime(year, month, day);
-          final total = await DatabaseHelper().getTotalForDate(date);
-          weekTotal += total;
-          if (total > 0) dayCount++;
-        }
+        // 한 번의 쿼리로 주간 데이터 가져오기
+        _weeklyData = await dbHelper.getWeeklyStatsOptimized(startOfWeek);
         
-        // Store weekly average
-        final weekKey = 'week_$week';
-        _monthlyData[weekKey] = dayCount > 0 ? (weekTotal / dayCount).round() : 0;
-      }
-      
-      final endOfMonth = DateTime(lastDay.year, lastDay.month, lastDay.day, 23, 59, 59);
-      _drinkTypeData = await provider.getDrinkTypeStats(firstDay, endOfMonth);
-    } else {
-      // Yearly view - group by months
-      _yearlyData = {};
-      final year = _selectedDate.year;
-      
-      for (int month = 1; month <= 12; month++) {
-        int monthTotal = 0;
-        int dayCount = 0;
+        final endOfWeek = DateTime(
+          startOfWeek.year,
+          startOfWeek.month,
+          startOfWeek.day + 6,
+          23, 59, 59,
+        );
+        _drinkTypeData = await provider.getDrinkTypeStats(startOfWeek, endOfWeek);
+      } else if (_selectedTabIndex == 1) {
+        // Monthly view - 최적화된 배치 쿼리 사용
+        final year = _selectedDate.year;
+        final month = _selectedDate.month;
+        
+        // 한 번의 쿼리로 월간 데이터 가져오기 (주 단위 평균)
+        _monthlyData = await dbHelper.getMonthlyStatsOptimized(year, month);
+        
         final firstDay = DateTime(year, month, 1);
         final lastDay = DateTime(year, month + 1, 0);
+        final endOfMonth = DateTime(lastDay.year, lastDay.month, lastDay.day, 23, 59, 59);
+        _drinkTypeData = await provider.getDrinkTypeStats(firstDay, endOfMonth);
+      } else {
+        // Yearly view - 최적화된 배치 쿼리 사용
+        final year = _selectedDate.year;
         
-        for (int day = 1; day <= lastDay.day; day++) {
-          final date = DateTime(year, month, day);
-          final total = await DatabaseHelper().getTotalForDate(date);
-          monthTotal += total;
-          if (total > 0) dayCount++;
-        }
+        // 한 번의 쿼리로 연간 데이터 가져오기 (월 단위 평균)
+        _yearlyData = await dbHelper.getYearlyStatsOptimized(year);
         
-        // Store monthly average
-        final monthKey = 'month_${month - 1}';
-        _yearlyData[monthKey] = dayCount > 0 ? (monthTotal / dayCount).round() : 0;
+        final firstDay = DateTime(year, 1, 1);
+        final lastDay = DateTime(year, 12, 31, 23, 59, 59);
+        _drinkTypeData = await provider.getDrinkTypeStats(firstDay, lastDay);
       }
       
-      final firstDay = DateTime(year, 1, 1);
-      final lastDay = DateTime(year, 12, 31, 23, 59, 59);
-      _drinkTypeData = await provider.getDrinkTypeStats(firstDay, lastDay);
+      _streakDays = await provider.getStreakDays();
+      
+      if (mounted) setState(() {});
+    } catch (e) {
+      // 에러 발생 시 기본값 설정
+      if (mounted) {
+        setState(() {
+          _weeklyData = {};
+          _monthlyData = {};
+          _yearlyData = {};
+          _drinkTypeData = {};
+          _streakDays = 0;
+        });
+      }
     }
-    
-    _streakDays = await provider.getStreakDays();
-    
-    if (mounted) setState(() {});
   }
 
   @override
