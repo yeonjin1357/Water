@@ -1,0 +1,47 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 배경 그라데이션 (더 넓은 영역에 맞춰 조정) -->
+    <linearGradient id="featureBackgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#5BA0F2;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#6BB0FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#87CEEB;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 부드러운 그림자 필터 -->
+    <filter id="featureDropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="6" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.15"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- 물방울 내부 하이라이트 그라데이션 -->
+    <linearGradient id="dropHighlight" x1="30%" y1="10%" x2="70%" y2="90%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F0F8FF;stop-opacity:0.95" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 배경 -->
+  <rect width="1024" height="500" fill="url(#featureBackgroundGradient)"/>
+  
+  <!-- 메인 물방울 (정중앙, 크기 축소) -->
+  <path d="M512 325 
+           C540 325 564 301 564 273
+           C564 245 512 175 512 175
+           S460 245 460 273
+           C460 301 484 325 512 325 Z" 
+        fill="url(#dropHighlight)" 
+        filter="url(#featureDropShadow)"/>
+  
+  <!-- 물방울 내부 반사광 효과 -->
+  <ellipse cx="502" cy="235" rx="15" ry="20" 
+           fill="#FFFFFF" 
+           opacity="0.6"
+           transform="rotate(-20 502 235)"/>
+</svg>

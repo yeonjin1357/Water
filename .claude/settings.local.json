@@ -19,7 +19,10 @@
       "Bash(gradlew:*)",
       "Bash(adb:*)",
       "Bash(touch:*)",
-      "WebFetch(domain:developer.android.com)"
+      "WebFetch(domain:developer.android.com)",
+      "Bash(dir C:yeonjinprojectassetsicons)",
+      "Bash(dir assetsicons)",
+      "Bash(dir:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

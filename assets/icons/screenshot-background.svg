@@ -1,0 +1,40 @@
+<svg width="900" height="1600" viewBox="0 0 900 1600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 심플한 수직 그라데이션 -->
+    <linearGradient id="modernGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5BA0F2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#87CEEB;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 노이즈 텍스처 -->
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="5"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    
+    <!-- 블러 효과 -->
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="40"/>
+    </filter>
+  </defs>
+  
+  <!-- 메인 배경 -->
+  <rect width="900" height="1600" fill="url(#modernGradient)"/>
+  
+  <!-- 추상적인 기하학 도형 (매우 은은하게) -->
+  <g opacity="0.03">
+    <!-- 큰 원 - 블러 처리 -->
+    <circle cx="700" cy="400" r="300" fill="#FFFFFF" filter="url(#blur)"/>
+    <circle cx="200" cy="1200" r="250" fill="#FFFFFF" filter="url(#blur)"/>
+  </g>
+  
+  <!-- 미니멀한 라인 패턴 -->
+  <g opacity="0.05">
+    <line x1="0" y1="400" x2="900" y2="400" stroke="#FFFFFF" stroke-width="0.5"/>
+    <line x1="0" y1="800" x2="900" y2="800" stroke="#FFFFFF" stroke-width="0.5"/>
+    <line x1="0" y1="1200" x2="900" y2="1200" stroke="#FFFFFF" stroke-width="0.5"/>
+  </g>
+  
+  <!-- 노이즈 오버레이 (질감 추가) -->
+  <rect width="900" height="1600" filter="url(#noise)" opacity="0.02"/>
+</svg>
