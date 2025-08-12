@@ -726,8 +726,10 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog>
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             fontWeight: FontWeight.w500,
           ),
+          counterText: '',
         ),
         keyboardType: TextInputType.number,
+        maxLength: 4,
         onChanged: (value) {
           final amount = int.tryParse(value);
           if (amount != null && amount > 0) {
