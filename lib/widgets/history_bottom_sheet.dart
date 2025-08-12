@@ -5,6 +5,7 @@ import '../providers/water_intake_provider.dart';
 import '../models/water_intake.dart';
 import '../models/user_settings.dart';
 import 'drink_settings_dialog.dart';
+import 'calendar_with_gauge.dart';
 import '../localization/app_localizations.dart';
 
 class HistoryBottomSheet extends StatefulWidget {
@@ -496,31 +497,19 @@ class _HistoryBottomSheetState extends State<HistoryBottomSheet> {
   }
 
   Future<void> _selectDate() async {
-    final DateTime now = DateTime.now();
-    final DateTime? picked = await showDatePicker(
+    await showDialog(
       context: context,
-      initialDate: _selectedDate ?? now,
-      firstDate: DateTime(2020),
-      lastDate: now,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: const Color(0xFF42A5F5),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      builder: (context) => CalendarWithGauge(
+        initialDate: _selectedDate,
+        onDateSelected: (date) {
+          setState(() {
+            _selectedDate = date;
+            _isDateFilterActive = true;
+            _loadIntakes();
+          });
+        },
+      ),
     );
-
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        _isDateFilterActive = true;
-        _loadIntakes();
-      });
-    }
   }
 
   void _clearDateFilter() {

@@ -32,7 +32,8 @@ class WaterIntakeProvider extends ChangeNotifier {
     );
 
     await _dbHelper.insertIntake(intake);
-    _todayIntakes.add(intake);
+    // 새로운 리스트를 생성하여 변경 감지가 제대로 되도록 함
+    _todayIntakes = [..._todayIntakes, intake];
     _todayTotal += amount;
     
     // Update persistent notification if enabled
@@ -57,7 +58,11 @@ class WaterIntakeProvider extends ChangeNotifier {
     if (todayIntakeIndex != -1) {
       final intake = _todayIntakes[todayIntakeIndex];
       _todayTotal -= intake.amount;
-      _todayIntakes.removeAt(todayIntakeIndex);
+      // 새로운 리스트를 생성하여 변경 감지가 제대로 되도록 함
+      _todayIntakes = [
+        ..._todayIntakes.sublist(0, todayIntakeIndex),
+        ..._todayIntakes.sublist(todayIntakeIndex + 1)
+      ];
       
       // Update persistent notification if enabled
       if (_userSettings.persistentNotificationEnabled) {
@@ -88,7 +93,12 @@ class WaterIntakeProvider extends ChangeNotifier {
       final index = _todayIntakes.indexWhere((i) => i.id == updatedIntake.id);
       if (index != -1) {
         final oldAmount = _todayIntakes[index].amount;
-        _todayIntakes[index] = updatedIntake;
+        // 새로운 리스트를 생성하여 변경 감지가 제대로 되도록 함
+        _todayIntakes = [
+          ..._todayIntakes.sublist(0, index),
+          updatedIntake,
+          ..._todayIntakes.sublist(index + 1)
+        ];
         _todayTotal = _todayTotal - oldAmount + updatedIntake.amount;
       }
     }
@@ -149,7 +159,8 @@ class WaterIntakeProvider extends ChangeNotifier {
   }
 
   void resetToday() {
-    _todayIntakes.clear();
+    // 새로운 리스트를 생성하여 변경 감지가 제대로 되도록 함
+    _todayIntakes = [];
     _todayTotal = 0;
     notifyListeners();
   }
@@ -231,6 +242,27 @@ class WaterIntakeProvider extends ChangeNotifier {
 
   Future<double> getCompletionRate(DateTime date) async {
     return await _dbHelper.getCompletionRate(date, _userSettings.dailyGoal);
+  }
+
+  // 한 달치 일일 진행률 데이터를 한 번에 가져오기
+  Future<Map<DateTime, double>> getMonthlyProgress(int year, int month) async {
+    final firstDay = DateTime(year, month, 1);
+    final lastDay = DateTime(year, month + 1, 0);
+    
+    Map<DateTime, double> progress = {};
+    
+    for (int day = 1; day <= lastDay.day; day++) {
+      final date = DateTime(year, month, day);
+      
+      // 미래 날짜는 건너뜀
+      if (date.isAfter(DateTime.now())) continue;
+      
+      final intakes = await _dbHelper.getIntakesByDate(date);
+      final totalAmount = intakes.fold(0, (sum, intake) => sum + intake.amount);
+      progress[date] = (totalAmount / _userSettings.dailyGoal).clamp(0.0, 1.0);
+    }
+    
+    return progress;
   }
 
   // Custom drink methods

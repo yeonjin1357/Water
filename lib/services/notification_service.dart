@@ -569,7 +569,7 @@ class NotificationService {
       channelDescription: '오늘의 수분 섭취량을 실시간으로 표시합니다',
       importance: Importance.low,
       priority: Priority.low,
-      ongoing: true, // 스와이프로 제거 불가능
+      ongoing: false, // 스와이프로 제거 가능
       autoCancel: false, // 탭해도 사라지지 않음
       showProgress: true,
       maxProgress: dailyGoal,
@@ -607,6 +607,42 @@ class NotificationService {
   // Hide persistent notification
   Future<void> hidePersistentNotification() async {
     await flutterLocalNotificationsPlugin.cancel(999);
+  }
+  
+  // Check if persistent notification is active
+  Future<bool> isPersistentNotificationActive() async {
+    final List<PendingNotificationRequest> pending = 
+        await flutterLocalNotificationsPlugin.pendingNotificationRequests();
+    
+    // Check if notification with ID 999 exists
+    for (final notification in pending) {
+      if (notification.id == 999) {
+        return true;
+      }
+    }
+    
+    // On Android, also check active notifications
+    if (Platform.isAndroid) {
+      final androidImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      
+      if (androidImplementation != null) {
+        try {
+          final activeNotifications = await androidImplementation.getActiveNotifications();
+          for (final notification in activeNotifications) {
+            if (notification.id == 999) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // If method not available, fall back to false
+          return false;
+        }
+      }
+    }
+    
+    return false;
   }
   
   // Ultra simple scheduled notification test - just 5 seconds

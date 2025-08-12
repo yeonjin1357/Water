@@ -5,6 +5,7 @@ import '../providers/water_intake_provider.dart';
 import '../widgets/modern_water_glass.dart';
 import '../widgets/drink_settings_dialog.dart';
 import '../widgets/history_bottom_sheet.dart';
+import '../widgets/hydration_timeline.dart';
 import '../localization/app_localizations.dart';
 
 class MainScreen extends StatefulWidget {
@@ -62,6 +63,8 @@ class _MainScreenState extends State<MainScreen> {
                           _buildHistoryIcon(context),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      const HydrationTimeline(),
                       const SizedBox(height: 40),
                     ],
                   ),

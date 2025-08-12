@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -19,9 +20,12 @@ void main() async {
   await notificationService.initialize();
   
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => WaterIntakeProvider(),
-      child: const WaterReminderApp(),
+    DevicePreview(
+      enabled: true, // Device Preview 활성화
+      builder: (context) => ChangeNotifierProvider(
+        create: (context) => WaterIntakeProvider(),
+        child: const WaterReminderApp(),
+      ),
     ),
   );
 }
@@ -36,6 +40,9 @@ class WaterReminderApp extends StatelessWidget {
         return MaterialApp(
           title: AppLocalizations.get('appTitle'),
           debugShowCheckedModeBanner: false,
+          useInheritedMediaQuery: true, // Device Preview를 위해 필요
+          locale: DevicePreview.locale(context), // Device Preview의 locale 사용
+          builder: DevicePreview.appBuilder, // Device Preview wrapper
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -45,9 +52,6 @@ class WaterReminderApp extends StatelessWidget {
             Locale('ko', 'KR'),
             Locale('en', 'US'),
           ],
-          locale: provider.userSettings.language == 'ko' 
-              ? const Locale('ko', 'KR')
-              : const Locale('en', 'US'),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
               seedColor: AppColors.primary,

@@ -114,10 +114,18 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog>
             child: Dialog(
               elevation: 24,
               backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
               ),
               child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -136,24 +144,43 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog>
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 28),
+                    // Fixed header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                      child: _buildHeader(context),
+                    ),
+                    const SizedBox(height: 20),
+                    Divider(
+                      color: Theme.of(context).dividerColor.withOpacity(0.1),
+                      thickness: 1,
+                      height: 1,
+                    ),
+                    // Scrollable content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(), // 오버스크롤 방지
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDrinkSelection(context),
+                            const SizedBox(height: 28),
 
-                    _buildDrinkSelection(context),
-                    const SizedBox(height: 28),
+                            _buildAmountSelection(context),
+                            const SizedBox(height: 24),
 
-                    _buildAmountSelection(context),
-                    const SizedBox(height: 24),
+                            _buildCustomAmountInput(context),
+                            const SizedBox(height: 28),
 
-                    _buildCustomAmountInput(context),
-                    const SizedBox(height: 28),
-
-                    _buildConfirmButton(context),
+                            _buildConfirmButton(context),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

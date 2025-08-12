@@ -91,6 +91,10 @@ class AppLocalizations {
       'week': '주',
       'month': '월',
       'year': '년',
+      
+      // Timeline
+      'hydrationTimeline': '오늘의 수분 섭취 타임라인',
+      'timelineEmpty': '아직 기록이 없습니다',
 
       // Notification Settings
       'notificationSettings': '알림 설정',
@@ -236,6 +240,10 @@ class AppLocalizations {
       'week': 'Week',
       'month': 'Month',
       'year': 'Year',
+      
+      // Timeline
+      'hydrationTimeline': 'Today\'s Hydration Timeline',
+      'timelineEmpty': 'No records yet',
 
       // Notification Settings
       'notificationSettings': 'Notification',

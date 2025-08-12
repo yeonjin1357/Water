@@ -184,12 +184,15 @@ class _ReminderEditDialogState extends State<ReminderEditDialog>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
         elevation: 8,
         backgroundColor: Colors.transparent,
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          constraints: const BoxConstraints(maxWidth: 380, maxHeight: 600),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+            maxHeight: 600,
+          ),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(32),
@@ -475,7 +478,9 @@ class _ReminderEditDialogState extends State<ReminderEditDialog>
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Text(
-                          _weekdayNames[index],
+                          AppLocalizations.currentLanguage == 'en' 
+                              ? _weekdayNames[index][0].toUpperCase()  // 영어일 때 첫 글자만
+                              : _weekdayNames[index],  // 한국어일 때 전체
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: isSelected
@@ -673,25 +678,15 @@ class _ReminderEditDialogState extends State<ReminderEditDialog>
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    widget.reminder != null ? Icons.check : Icons.add,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.reminder != null
-                        ? AppLocalizations.get('save')
-                        : AppLocalizations.get('add'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+              child: Text(
+                widget.reminder != null
+                    ? AppLocalizations.get('save')
+                    : AppLocalizations.get('add'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),

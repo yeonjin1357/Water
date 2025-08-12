@@ -583,12 +583,18 @@ class _StatsScreenState extends State<StatsScreen> {
             enabled: true,
             handleBuiltInTouches: false,
             touchCallback: (FlTouchEvent event, barTouchResponse) {
-              if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
+              if (event is FlTapDownEvent) {
                 setState(() {
-                  if (_selectedCompletionIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
-                    _selectedCompletionIndex = null; // Tap again to hide
+                  if (barTouchResponse != null && barTouchResponse.spot != null) {
+                    // 차트 바를 터치한 경우
+                    if (_selectedCompletionIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
+                      _selectedCompletionIndex = null; // Tap again to hide
+                    } else {
+                      _selectedCompletionIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                    }
                   } else {
-                    _selectedCompletionIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                    // 빈 공간을 터치한 경우 툴팁 숨기기
+                    _selectedCompletionIndex = null;
                   }
                 });
               }
@@ -733,13 +739,19 @@ class _StatsScreenState extends State<StatsScreen> {
             enabled: true,
             handleBuiltInTouches: false,
             touchCallback: (FlTouchEvent event, lineTouchResponse) {
-              if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+              if (event is FlTapDownEvent) {
                 setState(() {
-                  final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
-                  if (_selectedCompletionIndex == spotIndex) {
-                    _selectedCompletionIndex = null; // Tap again to hide
+                  if (lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+                    // 라인 포인트를 터치한 경우
+                    final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                    if (_selectedCompletionIndex == spotIndex) {
+                      _selectedCompletionIndex = null; // Tap again to hide
+                    } else {
+                      _selectedCompletionIndex = spotIndex;
+                    }
                   } else {
-                    _selectedCompletionIndex = spotIndex;
+                    // 빈 공간을 터치한 경우 툴팁 숨기기
+                    _selectedCompletionIndex = null;
                   }
                 });
               }
@@ -992,12 +1004,18 @@ class _StatsScreenState extends State<StatsScreen> {
             enabled: true,
             handleBuiltInTouches: false,
             touchCallback: (FlTouchEvent event, barTouchResponse) {
-              if (event is FlTapDownEvent && barTouchResponse != null && barTouchResponse.spot != null) {
+              if (event is FlTapDownEvent) {
                 setState(() {
-                  if (_selectedHydrateIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
-                    _selectedHydrateIndex = null; // Tap again to hide
+                  if (barTouchResponse != null && barTouchResponse.spot != null) {
+                    // 차트 바를 터치한 경우
+                    if (_selectedHydrateIndex == barTouchResponse.spot!.touchedBarGroupIndex) {
+                      _selectedHydrateIndex = null; // Tap again to hide
+                    } else {
+                      _selectedHydrateIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                    }
                   } else {
-                    _selectedHydrateIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                    // 빈 공간을 터치한 경우 툴팁 숨기기
+                    _selectedHydrateIndex = null;
                   }
                 });
               }
@@ -1158,13 +1176,19 @@ class _StatsScreenState extends State<StatsScreen> {
             enabled: true,
             handleBuiltInTouches: false,
             touchCallback: (FlTouchEvent event, lineTouchResponse) {
-              if (event is FlTapDownEvent && lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+              if (event is FlTapDownEvent) {
                 setState(() {
-                  final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
-                  if (_selectedHydrateIndex == spotIndex) {
-                    _selectedHydrateIndex = null; // Tap again to hide
+                  if (lineTouchResponse != null && lineTouchResponse.lineBarSpots != null && lineTouchResponse.lineBarSpots!.isNotEmpty) {
+                    // 라인 포인트를 터치한 경우
+                    final spotIndex = lineTouchResponse.lineBarSpots!.first.spotIndex;
+                    if (_selectedHydrateIndex == spotIndex) {
+                      _selectedHydrateIndex = null; // Tap again to hide
+                    } else {
+                      _selectedHydrateIndex = spotIndex;
+                    }
                   } else {
-                    _selectedHydrateIndex = spotIndex;
+                    // 빈 공간을 터치한 경우 툴팁 숨기기
+                    _selectedHydrateIndex = null;
                   }
                 });
               }

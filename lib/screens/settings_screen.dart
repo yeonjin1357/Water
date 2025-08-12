@@ -83,10 +83,14 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
@@ -223,10 +227,14 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),

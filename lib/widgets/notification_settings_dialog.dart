@@ -175,12 +175,15 @@ class _NotificationSettingsDialogState extends State<NotificationSettingsDialog>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
         ),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+            maxHeight: 600,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             gradient: LinearGradient(
