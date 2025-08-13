@@ -297,6 +297,10 @@ class _DrinkSettingsDialogState extends State<DrinkSettingsDialog>
                             color: color,
                           );
                           provider.addCustomDrink(newDrink);
+                          // Automatically select the newly added custom drink
+                          setState(() {
+                            selectedDrink = name;
+                          });
                         },
                       ),
                     );

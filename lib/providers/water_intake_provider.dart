@@ -120,9 +120,13 @@ class WaterIntakeProvider extends ChangeNotifier {
         currentAmount: _todayTotal,
         dailyGoal: newSettings.dailyGoal,
       );
+      // Schedule midnight reset
+      await _notificationService.scheduleMidnightReset();
     } else if (!newSettings.persistentNotificationEnabled && oldPersistentEnabled) {
       // Hide persistent notification if just disabled
       await _notificationService.hidePersistentNotification();
+      // Cancel midnight reset notification
+      await _notificationService.cancelNotification(998);
     } else if (newSettings.persistentNotificationEnabled) {
       // Update if goal changed while enabled
       await _notificationService.showPersistentNotification(
@@ -171,6 +175,11 @@ class WaterIntakeProvider extends ChangeNotifier {
     await loadTodayData();
     _setupMidnightTimer();
     
+    // Schedule midnight reset for persistent notification
+    if (_userSettings.persistentNotificationEnabled) {
+      await _notificationService.scheduleMidnightReset();
+    }
+    
     // Re-schedule water reminder notifications on app start
     if (_userSettings.waterReminders.isNotEmpty) {
       await _notificationService.scheduleWaterReminderNotifications(_userSettings.waterReminders);
@@ -185,7 +194,20 @@ class WaterIntakeProvider extends ChangeNotifier {
     final timeUntilMidnight = tomorrow.difference(now);
     
     _midnightTimer = Timer(timeUntilMidnight, () async {
+      // Reset today's data
       await loadTodayData();
+      
+      // Reset persistent notification to 0% if enabled
+      if (_userSettings.persistentNotificationEnabled) {
+        await _notificationService.showPersistentNotification(
+          currentAmount: 0,
+          dailyGoal: _userSettings.dailyGoal,
+        );
+        // Re-schedule next midnight reset
+        await _notificationService.scheduleMidnightReset();
+      }
+      
+      // Setup timer for next midnight
       _setupMidnightTimer();
     });
   }
@@ -197,7 +219,18 @@ class WaterIntakeProvider extends ChangeNotifier {
     if (_lastLoadedDate != null) {
       final lastDate = DateTime(_lastLoadedDate!.year, _lastLoadedDate!.month, _lastLoadedDate!.day);
       if (todayDate != lastDate) {
+        // It's a new day, reload data
         await loadTodayData();
+        
+        // Reset persistent notification to 0% if enabled
+        if (_userSettings.persistentNotificationEnabled) {
+          await _notificationService.showPersistentNotification(
+            currentAmount: 0,
+            dailyGoal: _userSettings.dailyGoal,
+          );
+          // Re-schedule midnight reset for next day
+          await _notificationService.scheduleMidnightReset();
+        }
       }
     }
   }

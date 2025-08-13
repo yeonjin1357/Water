@@ -173,6 +173,48 @@ class NotificationService {
       // debugPrint('NotificationService: Failed to get Android plugin');
     }
   }
+  
+  Future<void> _createPersistentNotificationChannel() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'persistent_water_channel',
+      '수분 섭취 현황',
+      description: '오늘의 수분 섭취량을 실시간으로 표시합니다',
+      importance: Importance.low,
+      playSound: false,
+      enableVibration: false,
+      enableLights: false,
+      showBadge: false,  // 배지 표시 안함
+    );
+
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin = 
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(channel);
+    }
+  }
+  
+  Future<void> _createMidnightResetChannel() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'midnight_reset_channel',
+      'Midnight Reset',
+      description: 'Resets the water intake notification at midnight',
+      importance: Importance.min,
+      playSound: false,
+      enableVibration: false,
+      enableLights: false,
+      showBadge: false,  // 배지 표시 안함
+    );
+
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin = 
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(channel);
+    }
+  }
 
   Future<void> _requestIOSPermissions() async {
     await flutterLocalNotificationsPlugin
@@ -204,6 +246,13 @@ class NotificationService {
     final String? payload = notificationResponse.payload;
     if (payload != null) {
       // debugPrint('Notification payload: $payload');
+      
+      // Handle midnight reset
+      if (payload == 'midnight_reset') {
+        // This is handled by the provider when the app is opened
+        // The notification itself serves as a trigger
+        // debugPrint('Midnight reset notification received');
+      }
     }
   }
 
@@ -550,6 +599,9 @@ class NotificationService {
     required int currentAmount,
     required int dailyGoal,
   }) async {
+    // Create persistent notification channel without badge
+    await _createPersistentNotificationChannel();
+    
     final percentage = ((currentAmount / dailyGoal) * 100).round();
     final remainingAmount = dailyGoal - currentAmount;
     
@@ -578,6 +630,7 @@ class NotificationService {
       color: const Color(0xFF42A5F5),
       playSound: false, // 무음
       enableVibration: false, // 진동 없음
+      channelShowBadge: false, // 앱 아이콘에 배지 표시 안함
       styleInformation: BigTextStyleInformation(
         body,
         contentTitle: title,
@@ -587,7 +640,7 @@ class NotificationService {
     const DarwinNotificationDetails iOSPlatformChannelSpecifics =
         DarwinNotificationDetails(
       presentAlert: false,
-      presentBadge: true,
+      presentBadge: false,
       presentSound: false,
     );
 
@@ -607,6 +660,95 @@ class NotificationService {
   // Hide persistent notification
   Future<void> hidePersistentNotification() async {
     await flutterLocalNotificationsPlugin.cancel(999);
+  }
+  
+  // Schedule midnight reset for persistent notification
+  Future<void> scheduleMidnightReset() async {
+    // Cancel any existing midnight reset notification
+    await flutterLocalNotificationsPlugin.cancel(998); // Use ID 998 for midnight reset
+    
+    // Calculate next midnight
+    final now = DateTime.now();
+    var midnight = DateTime(
+      now.year,
+      now.month,
+      now.day + 1, // Tomorrow
+      0, // Hour: 00
+      0, // Minute: 00
+    );
+    
+    // Convert to TZDateTime
+    final tzMidnight = tz.TZDateTime.from(midnight, tz.local);
+    
+    // Create midnight reset channel without badge
+    await _createMidnightResetChannel();
+    
+    // Create a special notification that triggers at midnight
+    // This notification will be invisible to the user but will trigger the reset
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'midnight_reset_channel',
+      'Midnight Reset',
+      channelDescription: 'Resets the water intake notification at midnight',
+      importance: Importance.min, // Minimal importance
+      priority: Priority.min,
+      playSound: false,
+      enableVibration: false,
+      showWhen: false,
+      channelShowBadge: false, // 앱 아이콘에 배지 표시 안함
+      ticker: '', // Empty ticker to minimize visibility
+    );
+
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: false,
+      presentBadge: false,
+      presentSound: false,
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+    
+    try {
+      // Check if we can schedule exact alarms
+      final bool canUseExact = await canScheduleExactAlarms();
+      final AndroidScheduleMode mode = canUseExact 
+          ? AndroidScheduleMode.exactAllowWhileIdle 
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+      
+      // Schedule the midnight reset notification
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        998,
+        '', // Empty title
+        '', // Empty body
+        tzMidnight,
+        platformChannelSpecifics,
+        androidScheduleMode: mode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        androidAllowWhileIdle: true,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at midnight
+        payload: 'midnight_reset', // Special payload to identify this notification
+      );
+      
+      // debugPrint('Scheduled midnight reset notification for: $tzMidnight');
+    } catch (e) {
+      // debugPrint('Failed to schedule midnight reset: $e');
+    }
+  }
+  
+  // Reset persistent notification to 0%
+  Future<void> resetPersistentNotificationToZero(int dailyGoal) async {
+    // Update the persistent notification to show 0%
+    await showPersistentNotification(
+      currentAmount: 0,
+      dailyGoal: dailyGoal,
+    );
+    
+    // Re-schedule the next midnight reset
+    await scheduleMidnightReset();
   }
   
   // Check if persistent notification is active
