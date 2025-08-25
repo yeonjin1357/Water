@@ -623,6 +623,7 @@ class NotificationService {
       priority: Priority.low,
       ongoing: false, // 스와이프로 제거 가능
       autoCancel: false, // 탭해도 사라지지 않음
+      showWhen: false, // 시간 표시 제거
       showProgress: true,
       maxProgress: dailyGoal,
       progress: currentAmount,
